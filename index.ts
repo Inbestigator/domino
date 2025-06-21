@@ -14,7 +14,7 @@ interface Node {
   state: "falling" | "fallen" | "standing";
 }
 interface NodeEventDetail {
-  affected: Position[];
+  affected: Position;
   direction: "horizontal" | "vertical";
   modulus: number;
 }
@@ -42,13 +42,12 @@ function diagonalTrigger(
     n,
   ]: Parameters<NodeType["handleTrigger"]>
 ) {
-  if (!affected.some((a) => a.x === n.position.x && a.y === n.position.y) || n.state !== "standing")
-    return;
+  if (affected.x !== n.position.x || affected.y !== n.position.y || n.state !== "standing") return;
   const xMod = n.char === "\\" && direction === "vertical" ? -modulus : modulus;
   const yMod = n.char === "\\" && direction === "horizontal" ? -modulus : modulus;
   dropDomino(
     {
-      affected: [{ x: n.position.x + xMod, y: n.position.y }],
+      affected: { x: n.position.x + xMod, y: n.position.y },
       direction: "horizontal",
       modulus: xMod,
     },
@@ -56,7 +55,7 @@ function diagonalTrigger(
   );
   dropDomino(
     {
-      affected: [{ x: n.position.x, y: n.position.y + yMod }],
+      affected: { x: n.position.x, y: n.position.y + yMod },
       direction: "vertical",
       modulus: yMod,
     },
@@ -69,14 +68,15 @@ const nodeTypes: NodeType[] = [
     char: "|",
     handleTrigger: ({ detail: { affected, direction, modulus } }, n) => {
       if (
-        !affected.some((a) => a.x === n.position.x && a.y === n.position.y) ||
+        affected.x !== n.position.x ||
+        affected.y !== n.position.y ||
         direction !== "horizontal" ||
         n.state !== "standing"
       )
         return;
       dropDomino(
         {
-          affected: [{ x: n.position.x + modulus, y: n.position.y }],
+          affected: { x: n.position.x + modulus, y: n.position.y },
           direction: "horizontal",
           modulus,
         },
@@ -88,14 +88,15 @@ const nodeTypes: NodeType[] = [
     char: "-",
     handleTrigger: ({ detail: { affected, direction, modulus } }, n) => {
       if (
-        !affected.some((a) => a.y === n.position.y && a.x === n.position.x) ||
+        affected.x !== n.position.x ||
+        affected.y !== n.position.y ||
         direction !== "vertical" ||
         n.state !== "standing"
       )
         return;
       dropDomino(
         {
-          affected: [{ x: n.position.x, y: n.position.y + modulus }],
+          affected: { x: n.position.x, y: n.position.y + modulus },
           direction: "vertical",
           modulus,
         },
@@ -113,7 +114,21 @@ const nodeTypes: NodeType[] = [
   },
   {
     char: "+",
-    handleTrigger: (e) => {},
+    handleTrigger: ({ detail: { affected, direction, modulus } }, n) => {
+      if (affected.x !== n.position.x || affected.y !== n.position.y || n.state !== "standing")
+        return;
+      dropDomino(
+        {
+          affected:
+            direction === "horizontal"
+              ? { x: n.position.x + modulus, y: n.position.y }
+              : { x: n.position.x, y: n.position.y + modulus },
+          direction,
+          modulus,
+        },
+        { ...n }
+      );
+    },
   },
 ];
 
@@ -209,16 +224,22 @@ process.stdin.on("keypress", (_, key) => {
     case "return":
       dropDomino(
         {
-          affected: [{ x: cursor.col, y: cursor.row }],
+          affected: { x: cursor.col, y: cursor.row },
           direction: cursor.dir === "h" ? "horizontal" : "vertical",
           modulus: cursor.modulus,
         },
         { char: "", position: { x: -1, y: -1 }, state: "standing" }
       );
       break;
+    case "r":
+      nodes = nodes.map((n) => ({ ...n, state: "standing" }));
+      break;
+    case "backspace":
+      cursor.col = clamp(cursor.col - 1, 0, COLS - 1);
+      nodes = nodes.filter((n) => n.position.x !== cursor.col || n.position.y !== cursor.row);
+      break;
     default: {
       addNode(key.sequence, cursor.col, cursor.row);
-
       if (cursor.dir === "h") {
         cursor.col = clamp(cursor.col + cursor.modulus, 0, COLS - 1);
       } else {
