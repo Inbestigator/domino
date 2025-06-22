@@ -1,7 +1,9 @@
-import readline from "node:readline";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { emitKeypressEvents } from "node:readline";
 
 const ROWS = process.stdout.rows - 1;
 const COLS = process.stdout.columns;
+const SAVE_FILE = "save.tjs";
 let cursor = { row: 0, col: 0, modulus: 1, dir: "h" };
 
 interface Position {
@@ -134,12 +136,12 @@ const nodeTypes: NodeType[] = [
 
 const allowedChars = new Set(nodeTypes.map((n) => n.char));
 
-function addNode(char: string, x: number, y: number) {
+function addNode(char: string, x: number, y: number, state: Node["state"] = "standing") {
   if (!allowedChars.has(char)) return;
   const node: Node = {
     position: { x, y },
     char,
-    state: "standing",
+    state,
   };
   nodes = nodes.filter((n) => n.position.x !== node.position.x || n.position.y !== node.position.y);
   nodes.push(node);
@@ -188,7 +190,7 @@ function render() {
   }
 }
 
-readline.emitKeypressEvents(process.stdin);
+emitKeypressEvents(process.stdin);
 process.stdin.setRawMode(true);
 process.stdout.write("\x1b[?25l");
 
@@ -234,6 +236,35 @@ process.stdin.on("keypress", (_, key) => {
     case "r":
       nodes = nodes.map((n) => ({ ...n, state: "standing" }));
       break;
+    case "s":
+      let data = "";
+      for (const node of nodes) {
+        data += `${node.position.x.toString(36).padStart(2, "0")}${node.position.y
+          .toString(36)
+          .padStart(2, "0")}${
+          node.state === "fallen" ? 2 : node.state === "falling" ? 1 : 0
+        }${nodeTypes.findIndex((t) => t.char === node.char)}`;
+      }
+      writeFileSync(SAVE_FILE, data);
+      break;
+    case "l":
+      if (existsSync(SAVE_FILE)) {
+        try {
+          const data = readFileSync(SAVE_FILE, "utf-8");
+          nodes = [];
+          for (let i = 0; i < data.length; i += 6) {
+            const x = parseInt(data.slice(i, i + 2), 36);
+            const y = parseInt(data.slice(i + 2, i + 4), 36);
+            const stateCode = parseInt(data[i + 4]!);
+            const charIndex = parseInt(data[i + 5]!);
+            const { char } = nodeTypes[charIndex]!;
+            const state = stateCode === 2 ? "fallen" : stateCode === 1 ? "falling" : "standing";
+
+            addNode(char, x, y, state);
+          }
+        } catch {}
+      }
+      break;
     case "backspace":
       cursor.col = clamp(cursor.col - 1, 0, COLS - 1);
       nodes = nodes.filter((n) => n.position.x !== cursor.col || n.position.y !== cursor.row);
@@ -250,32 +281,3 @@ process.stdin.on("keypress", (_, key) => {
 });
 
 setInterval(render, 17);
-
-// Big Spiral™®©
-// `|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||/
-// \\|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||/-
-// -\\|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||/--
-// --\\|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||/---
-// ---\\|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||/----
-// ----\\|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||/-----
-// -----\\|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||/------
-// ------\\|||||||||||||||||||||||||||||||||||||||||||||||||||||||||/-------
-// -------\\|||||||||||||||||||||||||||||||||||||||||||||||||||||||/--------
-// --------\\|||||||||||||||||||||||||||||||||||||||||||||||||||||/---------
-// ---------\\|||||||||||||||||||||||||||||||||||||||||||||||||||/----------
-// ----------\\|||||||||||||||||||||||||||||||||||||||||||||||||/-----------
-// -----------\\||||||||||||||||||||||||||||||||||||||||||||||||------------
-// -----------/||||||||||||||||||||||||||||||||||||||||||||||||\\-----------
-// ----------/||||||||||||||||||||||||||||||||||||||||||||||||||\\----------
-// ---------/||||||||||||||||||||||||||||||||||||||||||||||||||||\\---------
-// --------/||||||||||||||||||||||||||||||||||||||||||||||||||||||\\--------
-// -------/||||||||||||||||||||||||||||||||||||||||||||||||||||||||\\-------
-// ------/||||||||||||||||||||||||||||||||||||||||||||||||||||||||||\\------
-// -----/||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||\\-----
-// ----/||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||\\----
-// ---/||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||\\---
-// --/||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||\\--
-// -/||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||\\-
-// /||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||\\`
-//   .split("\n")
-//   .forEach((r, i) => r.split("").map((v, j) => addNode(v, j, i)));
