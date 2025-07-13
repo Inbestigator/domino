@@ -12,52 +12,47 @@ interface Position {
 }
 interface Node {
   position: Position;
-  char: string;
+  type: NodeType;
   state: "falling" | "fallen" | "standing";
 }
-interface NodeEventDetail {
-  affected: Position;
+interface FallData {
   direction: "horizontal" | "vertical";
   modulus: number;
 }
-let nodes: Node[] = [];
+const nodes = new Map<`${number},${number}`, Node>();
 
-const dispatcher = new EventTarget();
-
-async function dropDomino(detail: NodeEventDetail, node: Node) {
+async function dropDomino(position: Position, detail: FallData, node: Node) {
   node.state = "falling";
   await new Promise((resolve) => setTimeout(resolve, 50));
-  dispatcher.dispatchEvent(new CustomEvent<NodeEventDetail>("fall", { detail }));
+  const next = nodes.get(`${position.x},${position.y}`);
+  if (next && next.state === "standing") {
+    next.type.handleTrigger(detail, next);
+  }
   node.state = "fallen";
 }
 
 interface NodeType {
   char: string;
-  handleTrigger: (e: CustomEvent<NodeEventDetail>, n: Node) => void;
+  handleTrigger: (e: FallData, n: Node) => void;
 }
 
-function diagonalTrigger(
-  ...[
-    {
-      detail: { affected, direction, modulus },
-    },
-    n,
-  ]: Parameters<NodeType["handleTrigger"]>
-) {
-  if (affected.x !== n.position.x || affected.y !== n.position.y || n.state !== "standing") return;
-  const xMod = n.char === "\\" && direction === "vertical" ? -modulus : modulus;
-  const yMod = n.char === "\\" && direction === "horizontal" ? -modulus : modulus;
+function diagonalTrigger(...[{ direction, modulus }, n]: Parameters<NodeType["handleTrigger"]>) {
+  const xMod = n.type.char === "\\" && direction === "vertical" ? -modulus : modulus;
+  const yMod = n.type.char === "\\" && direction === "horizontal" ? -modulus : modulus;
   dropDomino(
     {
-      affected: { x: n.position.x + xMod, y: n.position.y },
+      x: n.position.x + xMod,
+      y: n.position.y,
+    },
+    {
       direction: "horizontal",
       modulus: xMod,
     },
     n
   );
   dropDomino(
+    { x: n.position.x, y: n.position.y + yMod },
     {
-      affected: { x: n.position.x, y: n.position.y + yMod },
       direction: "vertical",
       modulus: yMod,
     },
@@ -65,23 +60,13 @@ function diagonalTrigger(
   );
 }
 
-function triTrigger(
-  ...[
-    {
-      detail: { affected, direction, modulus },
-    },
-    n,
-  ]: Parameters<NodeType["handleTrigger"]>
-) {
-  if (affected.x !== n.position.x || affected.y !== n.position.y || n.state !== "standing") return;
-
-  const char = n.char;
+function triTrigger(...[{ direction, modulus }, n]: Parameters<NodeType["handleTrigger"]>) {
   const dirs = {
     "^": ["top", "left", "right", "top"],
     v: ["bottom", "left", "right", "bottom"],
     "<": ["top", "bottom", "left", "left"],
     ">": ["top", "bottom", "right", "right"],
-  }[char]!;
+  }[n.type.char]!;
   const actualDirection =
     direction === "horizontal" ? (modulus > 0 ? "left" : "right") : modulus > 0 ? "top" : "bottom";
 
@@ -120,10 +105,10 @@ function triTrigger(
 
     dropDomino(
       {
-        affected: {
-          x: n.position.x + dx,
-          y: n.position.y + dy,
-        },
+        x: n.position.x + dx,
+        y: n.position.y + dy,
+      },
+      {
         direction: d,
         modulus: d === "horizontal" ? dx : dy,
       },
@@ -135,17 +120,17 @@ function triTrigger(
 const nodeTypes: NodeType[] = [
   {
     char: "|",
-    handleTrigger: ({ detail: { affected, direction, modulus } }, n) => {
-      if (affected.x !== n.position.x || affected.y !== n.position.y || n.state !== "standing") {
-        return;
-      }
+    handleTrigger: ({ direction, modulus }, n) => {
       if (direction !== "horizontal") {
         n.state = "fallen";
         return;
       }
       dropDomino(
         {
-          affected: { x: n.position.x + modulus, y: n.position.y },
+          x: n.position.x + modulus,
+          y: n.position.y,
+        },
+        {
           direction: "horizontal",
           modulus,
         },
@@ -155,16 +140,17 @@ const nodeTypes: NodeType[] = [
   },
   {
     char: "-",
-    handleTrigger: ({ detail: { affected, direction, modulus } }, n) => {
-      if (affected.x !== n.position.x || affected.y !== n.position.y || n.state !== "standing")
-        return;
+    handleTrigger: ({ direction, modulus }, n) => {
       if (direction !== "vertical") {
         n.state = "fallen";
         return;
       }
       dropDomino(
         {
-          affected: { x: n.position.x, y: n.position.y + modulus },
+          x: n.position.x,
+          y: n.position.y + modulus,
+        },
+        {
           direction: "vertical",
           modulus,
         },
@@ -198,15 +184,12 @@ const nodeTypes: NodeType[] = [
   },
   {
     char: "+",
-    handleTrigger: ({ detail: { affected, direction, modulus } }, n) => {
-      if (affected.x !== n.position.x || affected.y !== n.position.y || n.state !== "standing")
-        return;
+    handleTrigger: ({ direction, modulus }, n) => {
       dropDomino(
+        direction === "horizontal"
+          ? { x: n.position.x + modulus, y: n.position.y }
+          : { x: n.position.x, y: n.position.y + modulus },
         {
-          affected:
-            direction === "horizontal"
-              ? { x: n.position.x + modulus, y: n.position.y }
-              : { x: n.position.x, y: n.position.y + modulus },
           direction,
           modulus,
         },
@@ -220,15 +203,14 @@ const allowedChars = new Set(nodeTypes.map((n) => n.char));
 
 function addNode(char: string, x: number, y: number, state: Node["state"] = "standing") {
   if (!allowedChars.has(char)) return;
+  const type = nodeTypes.find((n) => n.char === char);
+  if (!type) return;
   const node: Node = {
     position: { x, y },
-    char,
+    type,
     state,
   };
-  nodes = nodes.filter((n) => n.position.x !== node.position.x || n.position.y !== node.position.y);
-  nodes.push(node);
-  const handler = nodeTypes.find((n) => n.char === char)!.handleTrigger;
-  dispatcher.addEventListener("fall", (e) => handler(e as CustomEvent<NodeEventDetail>, node));
+  nodes.set(`${x},${y}`, node);
   return node;
 }
 
@@ -238,8 +220,8 @@ function render() {
   for (let y = cursor.row - Math.ceil(ROWS / 2); y < cursor.row + Math.floor(ROWS / 2); y++) {
     let line = "";
     for (let x = cursor.col - Math.ceil(COLS / 2); x < cursor.col + Math.floor(COLS / 2); x++) {
-      const node = nodes.find((n) => n.position.x === x && n.position.y === y);
-      let char = node?.char ?? " ";
+      const node = nodes.get(`${x},${y}`);
+      let char = node?.type.char ?? " ";
       let bg = "";
 
       if (node) {
@@ -304,27 +286,27 @@ process.stdin.on("keypress", (_, key) => {
       break;
     case "return":
       dropDomino(
+        { x: cursor.col, y: cursor.row },
         {
-          affected: { x: cursor.col, y: cursor.row },
           direction: cursor.dir === "h" ? "horizontal" : "vertical",
           modulus: cursor.modulus,
         },
-        { char: "", position: { x: -1, y: -1 }, state: "standing" }
+        { type: { char: "", handleTrigger() {} }, position: { x: -1, y: -1 }, state: "standing" }
       );
       break;
     case "r":
-      for (const n of nodes) {
+      for (const n of nodes.values()) {
         n.state = "standing";
       }
       break;
     case "s":
       let data = "";
-      for (const node of nodes) {
+      for (const node of nodes.values()) {
         data += `${node.position.x.toString(36).padStart(2, "0")}${node.position.y
           .toString(36)
           .padStart(2, "0")}${
           node.state === "fallen" ? 2 : node.state === "falling" ? 1 : 0
-        }${nodeTypes.findIndex((t) => t.char === node.char)}`;
+        }${nodeTypes.findIndex((t) => t.char === node.type.char)}`;
       }
       writeFileSync(SAVE_FILE, data);
       break;
@@ -332,7 +314,7 @@ process.stdin.on("keypress", (_, key) => {
       if (existsSync(SAVE_FILE)) {
         try {
           const data = readFileSync(SAVE_FILE, "utf-8");
-          nodes.length = 0;
+          nodes.clear();
           for (let i = 0; i < data.length; i += 6) {
             const x = parseInt(data.slice(i, i + 2), 36);
             const y = parseInt(data.slice(i + 2, i + 4), 36);
@@ -348,7 +330,7 @@ process.stdin.on("keypress", (_, key) => {
       break;
     case "backspace":
       cursor.col = cursor.col - 1;
-      nodes = nodes.filter((n) => n.position.x !== cursor.col || n.position.y !== cursor.row);
+      nodes.delete(`${cursor.col},${cursor.row}`);
       break;
     default: {
       const node = addNode(key.sequence, cursor.col, cursor.row);
