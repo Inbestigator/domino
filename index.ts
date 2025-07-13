@@ -4,7 +4,7 @@ import { emitKeypressEvents } from "node:readline";
 const ROWS = process.stdout.rows - 1;
 const COLS = process.stdout.columns;
 const SAVE_FILE = "save.tjs";
-let cursor = { row: 0, col: 0, modulus: 1, dir: "h" };
+let cursor = { row: Math.ceil(ROWS / 2), col: Math.ceil(COLS / 2), modulus: 1, dir: "h" };
 
 interface Position {
   x: number;
@@ -65,17 +65,84 @@ function diagonalTrigger(
   );
 }
 
+function triTrigger(
+  ...[
+    {
+      detail: { affected, direction, modulus },
+    },
+    n,
+  ]: Parameters<NodeType["handleTrigger"]>
+) {
+  if (affected.x !== n.position.x || affected.y !== n.position.y || n.state !== "standing") return;
+
+  const char = n.char;
+  const dirs = {
+    "^": ["top", "left", "right", "top"],
+    v: ["bottom", "left", "right", "bottom"],
+    "<": ["top", "bottom", "left", "left"],
+    ">": ["top", "bottom", "right", "right"],
+  }[char]!;
+  const actualDirection =
+    direction === "horizontal" ? (modulus > 0 ? "left" : "right") : modulus > 0 ? "top" : "bottom";
+
+  if (!dirs.includes(actualDirection)) return;
+  const fallDirs = actualDirection === dirs[3] ? dirs.filter((d) => d !== dirs[3]) : [dirs[3]];
+
+  for (const dir of fallDirs) {
+    let dx = 0;
+    let dy = 0;
+    let d: "horizontal" | "vertical" | undefined;
+
+    switch (dir) {
+      case "top":
+        dx = 0;
+        dy = -1;
+        d = "vertical";
+        break;
+      case "bottom":
+        dx = 0;
+        dy = 1;
+        d = "vertical";
+        break;
+      case "left":
+        dx = -1;
+        dy = 0;
+        d = "horizontal";
+        break;
+      case "right":
+        dx = 1;
+        dy = 0;
+        d = "horizontal";
+        break;
+    }
+
+    if (!d) continue;
+
+    dropDomino(
+      {
+        affected: {
+          x: n.position.x + dx,
+          y: n.position.y + dy,
+        },
+        direction: d,
+        modulus: d === "horizontal" ? dx : dy,
+      },
+      n
+    );
+  }
+}
+
 const nodeTypes: NodeType[] = [
   {
     char: "|",
     handleTrigger: ({ detail: { affected, direction, modulus } }, n) => {
-      if (
-        affected.x !== n.position.x ||
-        affected.y !== n.position.y ||
-        direction !== "horizontal" ||
-        n.state !== "standing"
-      )
+      if (affected.x !== n.position.x || affected.y !== n.position.y || n.state !== "standing") {
         return;
+      }
+      if (direction !== "horizontal") {
+        n.state = "fallen";
+        return;
+      }
       dropDomino(
         {
           affected: { x: n.position.x + modulus, y: n.position.y },
@@ -89,13 +156,12 @@ const nodeTypes: NodeType[] = [
   {
     char: "-",
     handleTrigger: ({ detail: { affected, direction, modulus } }, n) => {
-      if (
-        affected.x !== n.position.x ||
-        affected.y !== n.position.y ||
-        direction !== "vertical" ||
-        n.state !== "standing"
-      )
+      if (affected.x !== n.position.x || affected.y !== n.position.y || n.state !== "standing")
         return;
+      if (direction !== "vertical") {
+        n.state = "fallen";
+        return;
+      }
       dropDomino(
         {
           affected: { x: n.position.x, y: n.position.y + modulus },
@@ -113,6 +179,22 @@ const nodeTypes: NodeType[] = [
   {
     char: "/",
     handleTrigger: diagonalTrigger,
+  },
+  {
+    char: "^",
+    handleTrigger: triTrigger,
+  },
+  {
+    char: "v",
+    handleTrigger: triTrigger,
+  },
+  {
+    char: ">",
+    handleTrigger: triTrigger,
+  },
+  {
+    char: "<",
+    handleTrigger: triTrigger,
   },
   {
     char: "+",
@@ -147,18 +229,15 @@ function addNode(char: string, x: number, y: number, state: Node["state"] = "sta
   nodes.push(node);
   const handler = nodeTypes.find((n) => n.char === char)!.handleTrigger;
   dispatcher.addEventListener("fall", (e) => handler(e as CustomEvent<NodeEventDetail>, node));
-}
-
-function clamp(val: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, val));
+  return node;
 }
 
 function render() {
   process.stdout.write("\x1b[H");
 
-  for (let y = 0; y < ROWS; y++) {
+  for (let y = cursor.row - Math.ceil(ROWS / 2); y < cursor.row + Math.floor(ROWS / 2); y++) {
     let line = "";
-    for (let x = 0; x < COLS; x++) {
+    for (let x = cursor.col - Math.ceil(COLS / 2); x < cursor.col + Math.floor(COLS / 2); x++) {
       const node = nodes.find((n) => n.position.x === x && n.position.y === y);
       let char = node?.char ?? " ";
       let bg = "";
@@ -204,23 +283,23 @@ process.stdin.on("keypress", (_, key) => {
 
   switch (key.name) {
     case "up":
-      cursor.row = clamp(cursor.row - 1, 0, ROWS - 1);
       cursor.modulus = -1;
+      cursor.row = cursor.row - 1;
       cursor.dir = "v";
       break;
     case "down":
-      cursor.row = clamp(cursor.row + 1, 0, ROWS - 1);
       cursor.modulus = 1;
+      cursor.row = cursor.row + 1;
       cursor.dir = "v";
       break;
     case "left":
       cursor.modulus = -1;
-      cursor.col = clamp(cursor.col - 1, 0, COLS - 1);
+      cursor.col = cursor.col - 1;
       cursor.dir = "h";
       break;
     case "right":
       cursor.modulus = 1;
-      cursor.col = clamp(cursor.col + 1, 0, COLS - 1);
+      cursor.col = cursor.col + 1;
       cursor.dir = "h";
       break;
     case "return":
@@ -234,7 +313,9 @@ process.stdin.on("keypress", (_, key) => {
       );
       break;
     case "r":
-      nodes = nodes.map((n) => ({ ...n, state: "standing" }));
+      for (const n of nodes) {
+        n.state = "standing";
+      }
       break;
     case "s":
       let data = "";
@@ -251,7 +332,7 @@ process.stdin.on("keypress", (_, key) => {
       if (existsSync(SAVE_FILE)) {
         try {
           const data = readFileSync(SAVE_FILE, "utf-8");
-          nodes = [];
+          nodes.length = 0;
           for (let i = 0; i < data.length; i += 6) {
             const x = parseInt(data.slice(i, i + 2), 36);
             const y = parseInt(data.slice(i + 2, i + 4), 36);
@@ -266,15 +347,17 @@ process.stdin.on("keypress", (_, key) => {
       }
       break;
     case "backspace":
-      cursor.col = clamp(cursor.col - 1, 0, COLS - 1);
+      cursor.col = cursor.col - 1;
       nodes = nodes.filter((n) => n.position.x !== cursor.col || n.position.y !== cursor.row);
       break;
     default: {
-      addNode(key.sequence, cursor.col, cursor.row);
-      if (cursor.dir === "h") {
-        cursor.col = clamp(cursor.col + cursor.modulus, 0, COLS - 1);
-      } else {
-        cursor.row = clamp(cursor.row + cursor.modulus, 0, ROWS - 1);
+      const node = addNode(key.sequence, cursor.col, cursor.row);
+      if (node) {
+        if (cursor.dir === "h") {
+          cursor.col = cursor.col + cursor.modulus;
+        } else {
+          cursor.row = cursor.row + cursor.modulus;
+        }
       }
     }
   }
