@@ -1,10 +1,11 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { emitKeypressEvents } from "node:readline";
+import nodeTypes from "./node-types.json";
 
 const ROWS = process.stdout.rows - 1;
 const COLS = process.stdout.columns;
 const SAVE_FILE = "save.tjs";
-let cursor = { row: Math.ceil(ROWS / 2), col: Math.ceil(COLS / 2), modulus: 1, dir: "h" };
+const cursor = { row: Math.ceil(ROWS / 2), col: Math.ceil(COLS / 2), modulus: 1, dir: "h" };
 
 interface Position {
   x: number;
@@ -15,189 +16,36 @@ interface Node {
   type: NodeType;
   state: "falling" | "fallen" | "standing";
 }
-interface FallData {
-  direction: "horizontal" | "vertical";
-  modulus: number;
+
+interface NodeType {
+  char: string;
+  interactions: {
+    in: { x: -1 | 0 | 1; y: -1 | 0 | 1 };
+    out: { x: -1 | 0 | 1; y: -1 | 0 | 1; fall?: false }[];
+  }[];
 }
+
 const nodes = new Map<`${number},${number}`, Node>();
 
-async function dropDomino(position: Position, detail: FallData, node: Node) {
+async function dropDomino(position: Position, node: Node) {
   node.state = "falling";
   await new Promise((resolve) => setTimeout(resolve, 50));
   const next = nodes.get(`${position.x},${position.y}`);
   if (next && next.state === "standing") {
-    next.type.handleTrigger(detail, next);
+    const interaction = next.type.interactions.find(
+      (i) => i.in.x === node.position.x - position.x && i.in.y === node.position.y - position.y
+    );
+    if (interaction) {
+      for (const out of interaction.out) {
+        dropDomino(
+          { x: out.x + next.position.x, y: out.y + next.position.y },
+          out.fall === false ? { ...next } : next
+        );
+      }
+    }
   }
   node.state = "fallen";
 }
-
-interface NodeType {
-  char: string;
-  handleTrigger: (e: FallData, n: Node) => void;
-}
-
-function diagonalTrigger(...[{ direction, modulus }, n]: Parameters<NodeType["handleTrigger"]>) {
-  const xMod = n.type.char === "\\" && direction === "vertical" ? -modulus : modulus;
-  const yMod = n.type.char === "\\" && direction === "horizontal" ? -modulus : modulus;
-  dropDomino(
-    {
-      x: n.position.x + xMod,
-      y: n.position.y,
-    },
-    {
-      direction: "horizontal",
-      modulus: xMod,
-    },
-    n
-  );
-  dropDomino(
-    { x: n.position.x, y: n.position.y + yMod },
-    {
-      direction: "vertical",
-      modulus: yMod,
-    },
-    n
-  );
-}
-
-function triTrigger(...[{ direction, modulus }, n]: Parameters<NodeType["handleTrigger"]>) {
-  const dirs = {
-    "^": ["top", "left", "right", "top"],
-    v: ["bottom", "left", "right", "bottom"],
-    "<": ["top", "bottom", "left", "left"],
-    ">": ["top", "bottom", "right", "right"],
-  }[n.type.char]!;
-  const actualDirection =
-    direction === "horizontal" ? (modulus > 0 ? "left" : "right") : modulus > 0 ? "top" : "bottom";
-
-  if (!dirs.includes(actualDirection)) return;
-  const fallDirs = actualDirection === dirs[3] ? dirs.filter((d) => d !== dirs[3]) : [dirs[3]];
-
-  for (const dir of fallDirs) {
-    let dx = 0;
-    let dy = 0;
-    let d: "horizontal" | "vertical" | undefined;
-
-    switch (dir) {
-      case "top":
-        dx = 0;
-        dy = -1;
-        d = "vertical";
-        break;
-      case "bottom":
-        dx = 0;
-        dy = 1;
-        d = "vertical";
-        break;
-      case "left":
-        dx = -1;
-        dy = 0;
-        d = "horizontal";
-        break;
-      case "right":
-        dx = 1;
-        dy = 0;
-        d = "horizontal";
-        break;
-    }
-
-    if (!d) continue;
-
-    dropDomino(
-      {
-        x: n.position.x + dx,
-        y: n.position.y + dy,
-      },
-      {
-        direction: d,
-        modulus: d === "horizontal" ? dx : dy,
-      },
-      n
-    );
-  }
-}
-
-const nodeTypes: NodeType[] = [
-  {
-    char: "|",
-    handleTrigger: ({ direction, modulus }, n) => {
-      if (direction !== "horizontal") {
-        n.state = "fallen";
-        return;
-      }
-      dropDomino(
-        {
-          x: n.position.x + modulus,
-          y: n.position.y,
-        },
-        {
-          direction: "horizontal",
-          modulus,
-        },
-        n
-      );
-    },
-  },
-  {
-    char: "-",
-    handleTrigger: ({ direction, modulus }, n) => {
-      if (direction !== "vertical") {
-        n.state = "fallen";
-        return;
-      }
-      dropDomino(
-        {
-          x: n.position.x,
-          y: n.position.y + modulus,
-        },
-        {
-          direction: "vertical",
-          modulus,
-        },
-        n
-      );
-    },
-  },
-  {
-    char: "\\",
-    handleTrigger: diagonalTrigger,
-  },
-  {
-    char: "/",
-    handleTrigger: diagonalTrigger,
-  },
-  {
-    char: "^",
-    handleTrigger: triTrigger,
-  },
-  {
-    char: "v",
-    handleTrigger: triTrigger,
-  },
-  {
-    char: ">",
-    handleTrigger: triTrigger,
-  },
-  {
-    char: "<",
-    handleTrigger: triTrigger,
-  },
-  {
-    char: "+",
-    handleTrigger: ({ direction, modulus }, n) => {
-      dropDomino(
-        direction === "horizontal"
-          ? { x: n.position.x + modulus, y: n.position.y }
-          : { x: n.position.x, y: n.position.y + modulus },
-        {
-          direction,
-          modulus,
-        },
-        { ...n }
-      );
-    },
-  },
-];
 
 const allowedChars = new Set(nodeTypes.map((n) => n.char));
 
@@ -207,7 +55,7 @@ function addNode(char: string, x: number, y: number, state: Node["state"] = "sta
   if (!type) return;
   const node: Node = {
     position: { x, y },
-    type,
+    type: type as NodeType,
     state,
   };
   nodes.set(`${x},${y}`, node);
@@ -288,10 +136,13 @@ process.stdin.on("keypress", (_, key) => {
       dropDomino(
         { x: cursor.col, y: cursor.row },
         {
-          direction: cursor.dir === "h" ? "horizontal" : "vertical",
-          modulus: cursor.modulus,
-        },
-        { type: { char: "", handleTrigger() {} }, position: { x: -1, y: -1 }, state: "standing" }
+          type: { char: "", interactions: [] },
+          position: {
+            x: cursor.dir === "h" ? cursor.col - cursor.modulus : cursor.col,
+            y: cursor.dir === "v" ? cursor.row - cursor.modulus : cursor.row,
+          },
+          state: "standing",
+        }
       );
       break;
     case "r":
