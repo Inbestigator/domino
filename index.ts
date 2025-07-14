@@ -216,7 +216,7 @@ process.stdin.on("keypress", (_, key) => {
           for (const [objectId, x, y, rotation] of decodedData) {
             const type = nodeTypes.find((t) => t.id === objectId) as NodeType;
             if (!type) continue;
-            addNode({ type, rotation }, x, y);
+            addNode({ type, rotation: (rotation % type.meta.variants.length) as Rotation }, x, y);
           }
         } catch {}
       }
