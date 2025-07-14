@@ -1,183 +1,50 @@
 [
   {
-    "char": "|",
-    "interactions": [
-      { "in": { "x": -1, "y": 0 }, "out": [{ "x": 1, "y": 0 }] },
-      { "in": { "x": 1, "y": 0 }, "out": [{ "x": -1, "y": 0 }] }
-    ]
+    "id": 0,
+    "meta": {
+      "variants": ["-", "|"]
+    },
+    "interactions": {
+      "up": { "trigger": ["down"], "actions": ["fall"] },
+      "right": { "trigger": ["left"], "actions": ["fall"] },
+      "down": { "trigger": ["up"], "actions": ["fall"] },
+      "left": { "trigger": ["right"], "actions": ["fall"] }
+    }
   },
   {
-    "char": "-",
-    "interactions": [
-      { "in": { "x": 0, "y": -1 }, "out": [{ "x": 0, "y": 1 }] },
-      { "in": { "x": 0, "y": 1 }, "out": [{ "x": 0, "y": -1 }] }
-    ]
+    "id": 1,
+    "meta": {
+      "variants": ["\\", "/"]
+    },
+    "interactions": {
+      "up": { "trigger": ["down", "left"], "actions": ["fall"] },
+      "right": { "trigger": ["down", "left"], "actions": ["fall"] },
+      "down": { "trigger": ["up", "right"], "actions": ["fall"] },
+      "left": { "trigger": ["up", "right"], "actions": ["fall"] }
+    }
   },
   {
-    "char": "\\",
-    "interactions": [
-      {
-        "in": { "x": -1, "y": 0 },
-        "out": [
-          { "x": 1, "y": 0 },
-          { "x": 0, "y": -1 }
-        ]
-      },
-      {
-        "in": { "x": 1, "y": 0 },
-        "out": [
-          { "x": -1, "y": 0 },
-          { "x": 0, "y": 1 }
-        ]
-      },
-      {
-        "in": { "x": 0, "y": -1 },
-        "out": [
-          { "x": -1, "y": 0 },
-          { "x": 0, "y": 1 }
-        ]
-      },
-      {
-        "in": { "x": 0, "y": 1 },
-        "out": [
-          { "x": 1, "y": 0 },
-          { "x": 0, "y": -1 }
-        ]
-      }
-    ]
+    "id": 2,
+    "meta": {
+      "variants": ["^", ">", "v", "<"]
+    },
+    "interactions": {
+      "up": { "trigger": ["right", "down", "left"], "actions": ["fall"] },
+      "right": { "trigger": ["up"], "actions": ["fall"] },
+      "down": { "trigger": ["up"], "actions": ["fall"] },
+      "left": { "trigger": ["up"], "actions": ["fall"] }
+    }
   },
   {
-    "char": "/",
-    "interactions": [
-      {
-        "in": { "x": -1, "y": 0 },
-        "out": [
-          { "x": 1, "y": 0 },
-          { "x": 0, "y": 1 }
-        ]
-      },
-      {
-        "in": { "x": 1, "y": 0 },
-        "out": [
-          { "x": -1, "y": 0 },
-          { "x": 0, "y": -1 }
-        ]
-      },
-      {
-        "in": { "x": 0, "y": -1 },
-        "out": [
-          { "x": 1, "y": 0 },
-          { "x": 0, "y": 1 }
-        ]
-      },
-      {
-        "in": { "x": 0, "y": 1 },
-        "out": [
-          { "x": -1, "y": 0 },
-          { "x": 0, "y": -1 }
-        ]
-      }
-    ]
-  },
-  {
-    "char": "^",
-    "interactions": [
-      {
-        "in": { "x": 1, "y": 0 },
-        "out": [{ "x": 0, "y": -1 }]
-      },
-      {
-        "in": { "x": -1, "y": 0 },
-        "out": [{ "x": 0, "y": -1 }]
-      },
-      {
-        "in": { "x": 0, "y": -1 },
-        "out": [
-          { "x": 1, "y": 0 },
-          { "x": -1, "y": 0 }
-        ]
-      }
-    ]
-  },
-  {
-    "char": "v",
-    "interactions": [
-      {
-        "in": { "x": 1, "y": 0 },
-        "out": [{ "x": 0, "y": 1 }]
-      },
-      {
-        "in": { "x": -1, "y": 0 },
-        "out": [{ "x": 0, "y": 1 }]
-      },
-      {
-        "in": { "x": 0, "y": 1 },
-        "out": [
-          { "x": 1, "y": 0 },
-          { "x": -1, "y": 0 }
-        ]
-      }
-    ]
-  },
-  {
-    "char": ">",
-    "interactions": [
-      {
-        "in": { "x": 0, "y": 1 },
-        "out": [{ "x": 1, "y": 0 }]
-      },
-      {
-        "in": { "x": 0, "y": -1 },
-        "out": [{ "x": 1, "y": 0 }]
-      },
-      {
-        "in": { "x": 1, "y": 0 },
-        "out": [
-          { "x": 0, "y": 1 },
-          { "x": 0, "y": -1 }
-        ]
-      }
-    ]
-  },
-  {
-    "char": "<",
-    "interactions": [
-      {
-        "in": { "x": 0, "y": 1 },
-        "out": [{ "x": -1, "y": 0 }]
-      },
-      {
-        "in": { "x": 0, "y": -1 },
-        "out": [{ "x": -1, "y": 0 }]
-      },
-      {
-        "in": { "x": -1, "y": 0 },
-        "out": [
-          { "x": 0, "y": 1 },
-          { "x": 0, "y": -1 }
-        ]
-      }
-    ]
-  },
-  {
-    "char": "+",
-    "interactions": [
-      {
-        "in": { "x": 1, "y": 0 },
-        "out": [{ "x": -1, "y": 0, "fall": false }]
-      },
-      {
-        "in": { "x": -1, "y": 0 },
-        "out": [{ "x": 1, "y": 0, "fall": false }]
-      },
-      {
-        "in": { "x": 0, "y": 1 },
-        "out": [{ "x": 0, "y": -1, "fall": false }]
-      },
-      {
-        "in": { "x": 0, "y": -1 },
-        "out": [{ "x": 0, "y": -1, "fall": false }]
-      }
-    ]
+    "id": 4,
+    "meta": {
+      "variants": ["+"]
+    },
+    "interactions": {
+      "up": { "trigger": ["down"], "actions": [] },
+      "right": { "trigger": ["left"], "actions": [] },
+      "down": { "trigger": ["up"], "actions": [] },
+      "left": { "trigger": ["right"], "actions": [] }
+    }
   }
 ]
