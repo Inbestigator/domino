@@ -43,56 +43,30 @@ interface NodeType {
 
 const nodes = new Map<`${number},${number}`, Node>();
 
-async function dropDomino(position: Position, node: Node) {
-  node.state = "falling";
+const directionOrder = ["up", "right", "down", "left"] as const;
+const dirX = (dir: Direction) => [0, 1, 0, -1][directionOrder.indexOf(dir)] ?? 0;
+const dirY = (dir: Direction) => [-1, 0, 1, 0][directionOrder.indexOf(dir)] ?? 0;
+const rotate = (dir: Direction, rotation: number) =>
+  directionOrder.at((directionOrder.indexOf(dir) + rotation) % 4)!;
+
+async function dropDomino(direction: Direction, prev: Node) {
+  prev.state = "falling";
   await new Promise((resolve) => setTimeout(resolve, 50));
-  const next = nodes.get(`${position.x},${position.y}`);
+  const next = nodes.get(
+    `${prev.position.x + dirX(direction)},${prev.position.y + dirY(direction)}`
+  );
   if (next && next.state === "standing") {
-    const direction: Direction =
-      node.position.y < position.y
-        ? "up"
-        : node.position.x > position.x
-        ? "right"
-        : node.position.y > position.y
-        ? "down"
-        : "left";
-    const interaction = next.type.interactions[direction];
+    const interaction = next.type.interactions[rotate(direction, 2 - next.rotation)];
     if (interaction) {
-      for (const out of interaction.trigger) {
-        const outX = out === "right" ? 1 : out === "left" ? -1 : 0;
-        const outY = out === "up" ? -1 : out === "down" ? 1 : 0;
+      for (const dir of interaction.trigger) {
         dropDomino(
-          { x: outX + next.position.x, y: outY + next.position.y },
+          rotate(dir, next.rotation),
           interaction.actions.includes("fall") ? next : { ...next }
         );
       }
     }
   }
-  node.state = "fallen";
-}
-
-const directionOrder = ["up", "right", "down", "left"] as const;
-
-function rotateDirection(dir: Direction, rotation: Rotation): Direction {
-  const index = directionOrder.indexOf(dir);
-  return directionOrder[(index + rotation) % 4]!;
-}
-
-function rotate(interactions: NodeType["interactions"], rotation: Rotation) {
-  const rotated = { ...interactions };
-
-  for (const from of directionOrder) {
-    const original = interactions[from];
-    if (!original) continue;
-
-    const to = rotateDirection(from, rotation);
-    rotated[to] = {
-      trigger: original.trigger.map((t) => rotateDirection(t, rotation)),
-      actions: original.actions,
-    };
-  }
-
-  return rotated;
+  prev.state = "fallen";
 }
 
 function addNode(data: string | { type: NodeType; rotation: Rotation }, x: number, y: number) {
@@ -105,12 +79,10 @@ function addNode(data: string | { type: NodeType; rotation: Rotation }, x: numbe
     data.rotation = data.type.meta.variants.indexOf(char) as Rotation;
   }
   if (!data || typeof data === "string") return;
-  const transFormedInteractions = rotate(data.type.interactions, data.rotation);
   nodes.set(`${x},${y}`, {
     position: { x, y },
     state: "standing",
-    rotation: data.rotation,
-    type: { ...data.type, interactions: transFormedInteractions },
+    ...data,
   });
   return true;
 }
@@ -187,13 +159,22 @@ process.stdin.on("keypress", (_, key) => {
       cursor.dir = "h";
       break;
     case "return":
-      dropDomino({ x: cursor.col, y: cursor.row }, {
-        position: {
-          x: cursor.dir === "h" ? cursor.col - cursor.modulus : cursor.col,
-          y: cursor.dir === "v" ? cursor.row - cursor.modulus : cursor.row,
-        },
-        state: "standing",
-      } as Node);
+      dropDomino(
+        cursor.dir === "h"
+          ? cursor.modulus === 1
+            ? "right"
+            : "left"
+          : cursor.modulus === 1
+          ? "down"
+          : "up",
+        {
+          position: {
+            x: cursor.dir === "h" ? cursor.col - cursor.modulus : cursor.col,
+            y: cursor.dir === "v" ? cursor.row - cursor.modulus : cursor.row,
+          },
+          state: "standing",
+        } as Node
+      );
       break;
     case "r":
       for (const n of nodes.values()) {
