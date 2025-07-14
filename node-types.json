@@ -2,7 +2,7 @@
   {
     "id": 0,
     "meta": {
-      "variants": ["-", "|"]
+      "variants": ["|", "-", "|", "-"]
     },
     "interactions": {
       "up": { "trigger": ["down"], "actions": ["fall"] },
@@ -14,7 +14,7 @@
   {
     "id": 1,
     "meta": {
-      "variants": ["\\", "/"]
+      "variants": ["\\", "/", "\\", "/"]
     },
     "interactions": {
       "up": { "trigger": ["down", "left"], "actions": ["fall"] },
@@ -38,7 +38,7 @@
   {
     "id": 4,
     "meta": {
-      "variants": ["+"]
+      "variants": ["+", "+", "+", "+"]
     },
     "interactions": {
       "up": { "trigger": ["down"], "actions": [] },

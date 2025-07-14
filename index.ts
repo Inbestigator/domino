@@ -118,9 +118,9 @@ function addNode(data: string | { type: NodeType; rotation: Rotation }, x: numbe
 function render() {
   process.stdout.write("\x1b[H");
 
-  for (let y = cursor.row - Math.ceil(ROWS / 2); y < cursor.row + Math.floor(ROWS / 2); y++) {
+  for (let y = cursor.row - Math.ceil(ROWS / 2); y < cursor.row + Math.floor(ROWS / 2); ++y) {
     let line = "";
-    for (let x = cursor.col - Math.ceil(COLS / 2); x < cursor.col + Math.floor(COLS / 2); x++) {
+    for (let x = cursor.col - Math.ceil(COLS / 2); x < cursor.col + Math.floor(COLS / 2); ++x) {
       const node = nodes.get(`${x},${y}`);
       let char = node?.type.meta.variants[node.rotation] ?? " ";
       let bg = "";
@@ -214,7 +214,9 @@ process.stdin.on("keypress", (_, key) => {
           const decodedData = decode(data);
           nodes.clear();
           for (const [objectId, x, y, rotation] of decodedData) {
-            addNode({ type: nodeTypes.find((t) => t.id === objectId) as NodeType, rotation }, x, y);
+            const type = nodeTypes.find((t) => t.id === objectId) as NodeType;
+            if (!type) continue;
+            addNode({ type, rotation }, x, y);
           }
         } catch {}
       }
