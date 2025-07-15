@@ -134,9 +134,10 @@ process.stdout.write("\x1b[?25l");
 
 export const cursor = { row: Math.ceil(ROWS / 2), col: Math.ceil(COLS / 2), modulus: 1, dir: "h" };
 let saveFile: string | undefined;
+let isPaused = false;
 
-process.stdin.on("keypress", (_, key) => {
-  if (!key) return;
+process.stdin.on("keypress", async (_, key) => {
+  if (!key || isPaused) return;
 
   if (key.ctrl && key.name === "c") {
     process.stdout.write("\x1b[?25h");
@@ -206,8 +207,10 @@ process.stdin.on("keypress", (_, key) => {
       } catch {}
       break;
     case "o":
-      input((f) => (saveFile = f), "", saveFile);
-      saveFile = undefined;
+      isPaused = true;
+      const v = await input("", saveFile);
+      if (v) saveFile = v;
+      isPaused = false;
       break;
     case "backspace":
       cursor.col = cursor.col - 1;
