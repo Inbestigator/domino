@@ -2,6 +2,8 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { emitKeypressEvents } from "node:readline";
 import { decode, encode } from "./savedata";
 import nodeTypes from "./node-types.json";
+import { render, input } from "./rendering";
+import { decodeTbit } from "./tbit-decode";
 
 const directions = ["right", "up", "left", "down"] as const;
 
@@ -9,7 +11,7 @@ type Direction = (typeof directions)[number];
 type NodeState = "falling" | "fallen" | "standing";
 export type Rotation = 0 | 1 | 2 | 3;
 
-interface Node {
+export interface Node {
   id: string;
   position: { x: number; y: number };
   type: NodeType;
@@ -39,7 +41,7 @@ interface NodeType {
   };
 }
 
-const nodes = new Map<`${number},${number}`, Node>();
+export const nodes = new Map<`${number},${number}`, Node>();
 
 const queue = new Map<string, [Interaction, { x: number; y: number }]>();
 function queueInteraction(key: string, interaction: Interaction, node: Node) {
@@ -123,15 +125,15 @@ export function addNode(
   return true;
 }
 
-const ROWS = process.stdout.rows;
-const COLS = process.stdout.columns;
+export const ROWS = process.stdout.rows;
+export const COLS = process.stdout.columns;
 
 emitKeypressEvents(process.stdin);
 process.stdin.setRawMode(true);
 process.stdout.write("\x1b[?25l");
 
-const cursor = { row: Math.ceil(ROWS / 2), col: Math.ceil(COLS / 2), modulus: 1, dir: "h" };
-const SAVE_FILE = "save.tjs";
+export const cursor = { row: Math.ceil(ROWS / 2), col: Math.ceil(COLS / 2), modulus: 1, dir: "h" };
+let saveFile: string | undefined;
 
 process.stdin.on("keypress", (_, key) => {
   if (!key) return;
@@ -183,25 +185,29 @@ process.stdin.on("keypress", (_, key) => {
       }
       break;
     case "s":
+      if (!saveFile) break;
       const data: [number, number, number, Rotation][] = [];
       for (const [_, node] of nodes) {
         data.push([node.type.id, node.position.x, node.position.y, node.rotation]);
       }
-      writeFileSync(SAVE_FILE, encode(data));
+      writeFileSync(saveFile, encode(data));
       break;
     case "l":
-      if (existsSync(SAVE_FILE)) {
-        try {
-          const data = readFileSync(SAVE_FILE);
-          const decodedData = decode(data);
-          nodes.clear();
-          for (const [objectId, x, y, rotation] of decodedData) {
-            const type = nodeTypes.find((t) => t.id === objectId) as NodeType;
-            if (!type) continue;
-            addNode({ type, rotation: (rotation % type.meta.variants.length) as Rotation }, x, y);
-          }
-        } catch {}
-      }
+      if (!saveFile || !existsSync(saveFile)) break;
+      try {
+        const data = readFileSync(saveFile);
+        const decodedData = (saveFile.endsWith("tbit") ? decodeTbit : decode)(data);
+        nodes.clear();
+        for (const [objectId, x, y, rotation] of decodedData) {
+          const type = nodeTypes.find((t) => t.id === objectId) as NodeType;
+          if (!type) continue;
+          addNode({ type, rotation: (rotation % type.meta.variants.length) as Rotation }, x, y);
+        }
+      } catch {}
+      break;
+    case "o":
+      input((f) => (saveFile = f), "", saveFile);
+      saveFile = undefined;
       break;
     case "backspace":
       cursor.col = cursor.col - 1;
@@ -219,43 +225,5 @@ process.stdin.on("keypress", (_, key) => {
     }
   }
 });
-
-function render() {
-  process.stdout.write("\x1b[H");
-
-  for (let y = cursor.row - Math.ceil(ROWS / 2); y < cursor.row + Math.floor(ROWS / 2); ++y) {
-    let line = "";
-    for (let x = cursor.col - Math.ceil(COLS / 2); x < cursor.col + Math.floor(COLS / 2); ++x) {
-      const node = nodes.get(`${x},${y}`);
-      let char = node?.type.meta.variants[node.rotation] ?? " ";
-      let bg = "";
-
-      if (node) {
-        switch (node.state) {
-          case "standing":
-            bg = "\x1b[44m";
-            break;
-          case "falling":
-            bg = "\x1b[42m";
-            break;
-          case "fallen":
-            bg = "\x1b[41m";
-            break;
-        }
-      }
-
-      const isCursor = cursor.col === x && cursor.row === y;
-      if (isCursor) {
-        char = `\x1b[7m${bg}${char}\x1b[0m`;
-      } else if (node) {
-        char = `${bg}${char}\x1b[0m`;
-      }
-
-      line += char;
-    }
-    process.stdout.write(line);
-  }
-  process.stdout.write(`\x1b[${ROWS};1H(${cursor.col}, ${cursor.row}) ${nodes.size}`);
-}
 
 setInterval(render, 17);
