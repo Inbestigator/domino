@@ -4,11 +4,59 @@
     "meta": {
       "variants": ["|", "-"]
     },
-    "interactions": {
-      "up": { "trigger": ["down"], "actions": ["fall"] },
-      "right": { "trigger": ["left"], "actions": ["fall"] },
-      "down": { "trigger": ["up"], "actions": ["fall"] },
-      "left": { "trigger": ["right"], "actions": ["fall"] }
+    "on": {
+      "knockedRight": {
+        "do": [
+          {
+            "action": "changeState",
+            "state": "falling"
+          },
+          {
+            "action": "knock",
+            "direction": "right"
+          }
+        ],
+        "priority": 1
+      },
+      "knockedUp": {
+        "do": [
+          {
+            "action": "changeState",
+            "state": "falling"
+          },
+          {
+            "action": "knock",
+            "direction": "up"
+          }
+        ],
+        "priority": 0
+      },
+      "knockedLeft": {
+        "do": [
+          {
+            "action": "changeState",
+            "state": "falling"
+          },
+          {
+            "action": "knock",
+            "direction": "left"
+          }
+        ],
+        "priority": 1
+      },
+      "knockedDown": {
+        "do": [
+          {
+            "action": "changeState",
+            "state": "falling"
+          },
+          {
+            "action": "knock",
+            "direction": "down"
+          }
+        ],
+        "priority": 0
+      }
     }
   },
   {
@@ -16,23 +64,143 @@
     "meta": {
       "variants": ["\\", "/"]
     },
-    "interactions": {
-      "up": { "trigger": ["down", "left"], "actions": ["fall"] },
-      "right": { "trigger": ["down", "left"], "actions": ["fall"] },
-      "down": { "trigger": ["up", "right"], "actions": ["fall"] },
-      "left": { "trigger": ["up", "right"], "actions": ["fall"] }
+    "on": {
+      "knockedRight": {
+        "do": [
+          {
+            "action": "changeState",
+            "state": "falling"
+          },
+          {
+            "action": "knock",
+            "direction": "right"
+          },
+          {
+            "action": "knock",
+            "direction": "up"
+          }
+        ],
+        "priority": 0
+      },
+      "knockedUp": {
+        "do": [
+          {
+            "action": "changeState",
+            "state": "falling"
+          },
+          {
+            "action": "knock",
+            "direction": "right"
+          },
+          {
+            "action": "knock",
+            "direction": "up"
+          }
+        ],
+        "priority": 0
+      },
+      "knockedLeft": {
+        "do": [
+          {
+            "action": "changeState",
+            "state": "falling"
+          },
+          {
+            "action": "knock",
+            "direction": "left"
+          },
+          {
+            "action": "knock",
+            "direction": "down"
+          }
+        ],
+        "priority": 0
+      },
+      "knockedDown": {
+        "do": [
+          {
+            "action": "changeState",
+            "state": "falling"
+          },
+          {
+            "action": "knock",
+            "direction": "left"
+          },
+          {
+            "action": "knock",
+            "direction": "down"
+          }
+        ],
+        "priority": 0
+      }
     }
   },
   {
     "id": 2,
     "meta": {
-      "variants": ["^", ">", "v", "<"]
+      "variants": ["<", "v", ">", "^"]
     },
-    "interactions": {
-      "up": { "trigger": ["right", "down", "left"], "actions": ["fall"] },
-      "right": { "trigger": ["up"], "actions": ["fall"] },
-      "down": { "trigger": ["up"], "actions": ["fall"] },
-      "left": { "trigger": ["up"], "actions": ["fall"] }
+    "on": {
+      "knockedRight": {
+        "do": [
+          {
+            "action": "changeState",
+            "state": "falling"
+          },
+          {
+            "action": "knock",
+            "direction": "right"
+          },
+          {
+            "action": "knock",
+            "direction": "up"
+          },
+          {
+            "action": "knock",
+            "direction": "down"
+          }
+        ],
+        "priority": 1
+      },
+      "knockedUp": {
+        "do": [
+          {
+            "action": "changeState",
+            "state": "falling"
+          },
+          {
+            "action": "knock",
+            "direction": "left"
+          }
+        ],
+        "priority": 0
+      },
+      "knockedLeft": {
+        "do": [
+          {
+            "action": "changeState",
+            "state": "falling"
+          },
+          {
+            "action": "knock",
+            "direction": "left"
+          }
+        ],
+        "priority": 0
+      },
+      "knockedDown": {
+        "do": [
+          {
+            "action": "changeState",
+            "state": "falling"
+          },
+          {
+            "action": "knock",
+            "direction": "left"
+          }
+        ],
+        "priority": 0
+      }
     }
   },
   {
@@ -40,11 +208,59 @@
     "meta": {
       "variants": ["+"]
     },
-    "interactions": {
-      "up": { "trigger": ["down"], "actions": [] },
-      "right": { "trigger": ["left"], "actions": [] },
-      "down": { "trigger": ["up"], "actions": [] },
-      "left": { "trigger": ["right"], "actions": [] }
+    "on": {
+      "knockedRight": {
+        "do": [
+          {
+            "action": "changeState",
+            "state": "falling"
+          },
+          {
+            "action": "knock",
+            "direction": "right"
+          }
+        ],
+        "priority": 0
+      },
+      "knockedUp": {
+        "do": [
+          {
+            "action": "changeState",
+            "state": "falling"
+          },
+          {
+            "action": "knock",
+            "direction": "up"
+          }
+        ],
+        "priority": 0
+      },
+      "knockedLeft": {
+        "do": [
+          {
+            "action": "changeState",
+            "state": "falling"
+          },
+          {
+            "action": "knock",
+            "direction": "left"
+          }
+        ],
+        "priority": 0
+      },
+      "knockedDown": {
+        "do": [
+          {
+            "action": "changeState",
+            "state": "falling"
+          },
+          {
+            "action": "knock",
+            "direction": "down"
+          }
+        ],
+        "priority": 0
+      }
     }
   }
 ]

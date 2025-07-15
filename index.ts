@@ -1,31 +1,29 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { emitKeypressEvents } from "node:readline";
-import nodeTypes from "./node-types.json";
 import { decode, encode } from "./savedata";
+import nodeTypes from "./node-types.json";
 
-const ROWS = process.stdout.rows;
-const COLS = process.stdout.columns;
-const SAVE_FILE = "save.tjs";
-const cursor = { row: Math.ceil(ROWS / 2), col: Math.ceil(COLS / 2), modulus: 1, dir: "h" };
+const directions = ["right", "up", "left", "down"] as const;
 
-type Direction = "up" | "right" | "down" | "left";
-type Action = "fall";
+type Direction = (typeof directions)[number];
+type NodeState = "falling" | "fallen" | "standing";
 export type Rotation = 0 | 1 | 2 | 3;
 
-interface Position {
-  x: number;
-  y: number;
-}
 interface Node {
-  position: Position;
+  id: string;
+  position: { x: number; y: number };
   type: NodeType;
-  state: "falling" | "fallen" | "standing";
+  state: NodeState;
   rotation: Rotation;
 }
 
+type Action =
+  | { action: "changeState"; state: NodeState }
+  | { action: "knock"; direction: Direction };
+
 interface Interaction {
-  trigger: Direction[];
-  actions: Action[];
+  do: Action[];
+  priority: number;
 }
 
 interface NodeType {
@@ -33,101 +31,107 @@ interface NodeType {
   meta: {
     variants: string[];
   };
-  interactions: {
-    up?: Interaction;
-    right?: Interaction;
-    down?: Interaction;
-    left?: Interaction;
+  on: {
+    knockedRight?: Interaction;
+    knockedUp?: Interaction;
+    knockedLeft?: Interaction;
+    knockedDown?: Interaction;
   };
 }
 
 const nodes = new Map<`${number},${number}`, Node>();
 
-const directionOrder = ["up", "right", "down", "left"] as const;
-const dirX = (dir: Direction) => [0, 1, 0, -1][directionOrder.indexOf(dir)] ?? 0;
-const dirY = (dir: Direction) => [-1, 0, 1, 0][directionOrder.indexOf(dir)] ?? 0;
-const rotate = (dir: Direction, rotation: number) =>
-  directionOrder.at((directionOrder.indexOf(dir) + rotation) % 4)!;
-
-async function dropDomino(direction: Direction, prev: Node) {
-  prev.state = "falling";
-  await new Promise((resolve) => setTimeout(resolve, 50));
-  const next = nodes.get(
-    `${prev.position.x + dirX(direction)},${prev.position.y + dirY(direction)}`
-  );
-  if (next && next.state === "standing") {
-    const interaction = next.type.interactions[rotate(direction, 2 - next.rotation)];
-    if (interaction) {
-      for (const dir of interaction.trigger) {
-        dropDomino(
-          rotate(dir, next.rotation),
-          interaction.actions.includes("fall") ? next : { ...next }
-        );
-      }
-    }
+const queue = new Map<string, [Interaction, { x: number; y: number }]>();
+function queueInteraction(key: string, interaction: Interaction, node: Node) {
+  const existing = queue.get(key);
+  if (!existing || interaction.priority > existing[0].priority) {
+    queue.set(key, [interaction, node.position]);
   }
-  prev.state = "fallen";
 }
 
-function addNode(data: string | { type: NodeType; rotation: Rotation }, x: number, y: number) {
+const actions = {
+  knock(action: { direction: Direction }, node: Node) {
+    const x = node.position.x + dirX(action.direction);
+    const y = node.position.y + dirY(action.direction);
+    const next = nodes.get(`${x},${y}`);
+    const interaction = next ? getRotatedInteraction(next, action.direction) : undefined;
+    if (!next || !interaction || next.state !== "standing") return;
+    queueInteraction(next.id, interaction, next);
+  },
+  changeState(action: { state: NodeState }, node: Node) {
+    node.state = action.state;
+    if (node.state === "falling") {
+      queueInteraction(
+        crypto.randomUUID(),
+        { do: [{ action: "changeState", state: "fallen" }], priority: 1 },
+        node
+      );
+    }
+  },
+};
+
+setInterval(() => {
+  const prev = new Map(queue);
+  queue.clear();
+  prev.forEach(([i, p]) => {
+    for (const action of i.do) {
+      actions[action.action](action as never, nodes.get(`${p.x},${p.y}`)!);
+    }
+  });
+}, 50);
+
+const dirX = (dir: Direction) => ({ right: 1, up: 0, left: -1, down: 0 }[dir]);
+const dirY = (dir: Direction) => ({ right: 0, up: -1, left: 0, down: 1 }[dir]);
+const capitalize = <T extends string>(s: T): Capitalize<T> =>
+  (s[0]!.toUpperCase() + s.slice(1)) as Capitalize<T>;
+const rotate = (d: Direction, r: number) => directions[(directions.indexOf(d) + r) % 4]!;
+
+function getRotatedInteraction({ rotation, type }: Node, dir: Direction): Interaction | undefined {
+  const interaction = type.on[`knocked${capitalize(rotate(dir, 4 - rotation))}`];
+  if (!interaction) return;
+  return {
+    priority: interaction.priority,
+    do: interaction.do.map((action) =>
+      "direction" in action ? { ...action, direction: rotate(action.direction, rotation) } : action
+    ),
+  };
+}
+
+export function addNode(
+  data: string | { type: NodeType; rotation: Rotation },
+  x: number,
+  y: number
+) {
   if (typeof data === "string") {
     const char = data;
-    data = { type: nodeTypes.find((t) => t.meta.variants.includes(char)) } as {
+    const type = nodeTypes.find((t) => t.meta.variants.includes(char));
+    if (!type) return;
+    data = { type, rotation: type.meta.variants.indexOf(char) } as unknown as {
       type: NodeType;
       rotation: Rotation;
     };
     data.rotation = data.type.meta.variants.indexOf(char) as Rotation;
   }
   if (!data || typeof data === "string") return;
-  nodes.set(`${x},${y}`, {
+  const node = {
+    id: crypto.randomUUID(),
     position: { x, y },
     state: "standing",
     ...data,
-  });
+  } satisfies Node;
+  nodes.set(`${x},${y}`, node);
   return true;
 }
 
-function render() {
-  process.stdout.write("\x1b[H");
-
-  for (let y = cursor.row - Math.ceil(ROWS / 2); y < cursor.row + Math.floor(ROWS / 2); ++y) {
-    let line = "";
-    for (let x = cursor.col - Math.ceil(COLS / 2); x < cursor.col + Math.floor(COLS / 2); ++x) {
-      const node = nodes.get(`${x},${y}`);
-      let char = node?.type.meta.variants[node.rotation] ?? " ";
-      let bg = "";
-
-      if (node) {
-        switch (node.state) {
-          case "standing":
-            bg = "\x1b[44m";
-            break;
-          case "falling":
-            bg = "\x1b[42m";
-            break;
-          case "fallen":
-            bg = "\x1b[41m";
-            break;
-        }
-      }
-
-      const isCursor = cursor.col === x && cursor.row === y;
-      if (isCursor) {
-        char = `\x1b[7m${bg}${char}\x1b[0m`;
-      } else if (node) {
-        char = `${bg}${char}\x1b[0m`;
-      }
-
-      line += char;
-    }
-    process.stdout.write(line);
-  }
-  process.stdout.write(`\x1b[${ROWS};1H(${cursor.col}, ${cursor.row}) ${nodes.size}`);
-}
+const ROWS = process.stdout.rows;
+const COLS = process.stdout.columns;
 
 emitKeypressEvents(process.stdin);
 process.stdin.setRawMode(true);
 process.stdout.write("\x1b[?25l");
+
+const cursor = { row: Math.ceil(ROWS / 2), col: Math.ceil(COLS / 2), modulus: 1, dir: "h" };
+const SAVE_FILE = "save.tjs";
 
 process.stdin.on("keypress", (_, key) => {
   if (!key) return;
@@ -138,14 +142,14 @@ process.stdin.on("keypress", (_, key) => {
   }
 
   switch (key.name) {
+    case "right":
+      cursor.modulus = 1;
+      cursor.col = cursor.col + 1;
+      cursor.dir = "h";
+      break;
     case "up":
       cursor.modulus = -1;
       cursor.row = cursor.row - 1;
-      cursor.dir = "v";
-      break;
-    case "down":
-      cursor.modulus = 1;
-      cursor.row = cursor.row + 1;
       cursor.dir = "v";
       break;
     case "left":
@@ -153,28 +157,25 @@ process.stdin.on("keypress", (_, key) => {
       cursor.col = cursor.col - 1;
       cursor.dir = "h";
       break;
-    case "right":
+    case "down":
       cursor.modulus = 1;
-      cursor.col = cursor.col + 1;
-      cursor.dir = "h";
+      cursor.row = cursor.row + 1;
+      cursor.dir = "v";
       break;
     case "return":
-      dropDomino(
+      const node = nodes.get(`${cursor.col},${cursor.row}`);
+      const dir =
         cursor.dir === "h"
           ? cursor.modulus === 1
             ? "right"
             : "left"
           : cursor.modulus === 1
           ? "down"
-          : "up",
-        {
-          position: {
-            x: cursor.dir === "h" ? cursor.col - cursor.modulus : cursor.col,
-            y: cursor.dir === "v" ? cursor.row - cursor.modulus : cursor.row,
-          },
-          state: "standing",
-        } as Node
-      );
+          : ("up" as const);
+
+      const interaction = node ? getRotatedInteraction(node, dir) : undefined;
+      if (!node || !interaction) break;
+      queueInteraction(node.id, interaction, node);
       break;
     case "r":
       for (const n of nodes.values()) {
@@ -218,5 +219,43 @@ process.stdin.on("keypress", (_, key) => {
     }
   }
 });
+
+function render() {
+  process.stdout.write("\x1b[H");
+
+  for (let y = cursor.row - Math.ceil(ROWS / 2); y < cursor.row + Math.floor(ROWS / 2); ++y) {
+    let line = "";
+    for (let x = cursor.col - Math.ceil(COLS / 2); x < cursor.col + Math.floor(COLS / 2); ++x) {
+      const node = nodes.get(`${x},${y}`);
+      let char = node?.type.meta.variants[node.rotation] ?? " ";
+      let bg = "";
+
+      if (node) {
+        switch (node.state) {
+          case "standing":
+            bg = "\x1b[44m";
+            break;
+          case "falling":
+            bg = "\x1b[42m";
+            break;
+          case "fallen":
+            bg = "\x1b[41m";
+            break;
+        }
+      }
+
+      const isCursor = cursor.col === x && cursor.row === y;
+      if (isCursor) {
+        char = `\x1b[7m${bg}${char}\x1b[0m`;
+      } else if (node) {
+        char = `${bg}${char}\x1b[0m`;
+      }
+
+      line += char;
+    }
+    process.stdout.write(line);
+  }
+  process.stdout.write(`\x1b[${ROWS};1H(${cursor.col}, ${cursor.row}) ${nodes.size}`);
+}
 
 setInterval(render, 17);
