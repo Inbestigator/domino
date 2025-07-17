@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "title": "Domino Configuration",
+  "type": "object",
+  "required": ["version", "dominos"],
+  "properties": {
+    "version": {
+      "type": "integer"
+    },
+    "dominos": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "meta", "events"],
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "meta": {
+            "type": "object",
+            "required": ["name"],
+            "properties": {
+              "name": { "type": "string" }
+            },
+            "additionalProperties": true
+          },
+          "events": {
+            "type": "object",
+            "patternProperties": {
+              "^on(Knocked(:[a-z]+(,[a-z]+)*)?|Clicked|Start)$": {
+                "type": "object",
+                "required": ["actions"],
+                "properties": {
+                  "actions": {
+                    "type": "array",
+                    "items": {
+                      "oneOf": [
+                        { "type": "string" },
+                        {
+                          "type": "array",
+                          "minItems": 2,
+                          "maxItems": 2,
+                          "items": [{ "type": "string" }, { "type": "string" }]
+                        }
+                      ]
+                    }
+                  },
+                  "priority": { "type": "integer" },
+                  "relativeTo": { "type": "string" }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  }
+}

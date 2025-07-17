@@ -1,40 +1,58 @@
-[
-  {
-    "id": 0,
-    "meta": { "variants": ["|", "-"] },
-    "events": {
-      "onKnocked:right": { "actions": [["knock", "right"], "fall"], "priority": 1 },
-      "onKnocked:up": { "actions": [["knock", "up"], "fall"] },
-      "onKnocked:left": { "actions": [["knock", "left"], "fall"], "priority": 1 },
-      "onKnocked:down": { "actions": [["knock", "down"], "fall"] }
+{
+  "$schema": "https://raw.githubusercontent.com/Inbestigator/domino/refs/heads/main/schema.json",
+  "version": 1,
+  "dominos": [
+    {
+      "id": 0,
+      "meta": { "name": "orthogonal", "characters": ["|", "-"] },
+      "events": {
+        "onKnocked:right": { "actions": [["knock", "right"], "fall"], "priority": 1 },
+        "onKnocked:up": { "actions": [["knock", "up"], "fall"] },
+        "onKnocked:left": { "actions": [["knock", "left"], "fall"], "priority": 1 },
+        "onKnocked:down": { "actions": [["knock", "down"], "fall"] }
+      }
+    },
+    {
+      "id": 1,
+      "meta": { "name": "diagonal", "characters": ["\\", "/"] },
+      "events": {
+        "onKnocked:right": { "actions": [["knock", "right"], ["knock", "up"], "fall"] },
+        "onKnocked:up": { "actions": [["knock", "right"], ["knock", "up"], "fall"] },
+        "onKnocked:left": { "actions": [["knock", "left"], ["knock", "down"], "fall"] },
+        "onKnocked:down": { "actions": [["knock", "left"], ["knock", "down"], "fall"] }
+      }
+    },
+    {
+      "id": 2,
+      "meta": { "name": "fork", "characters": ["<", "v", ">", "^"] },
+      "events": {
+        "onKnocked:right": {
+          "actions": [["knock", "right"], ["knock", "up"], ["knock", "down"], "fall"],
+          "priority": 1
+        },
+        "onKnocked": { "actions": [["knock", "left"], "fall"] }
+      }
+    },
+    {
+      "id": 3,
+      "meta": { "name": "trigger", "characters": ["▸", "▴", "◂", "▾"] },
+      "events": {
+        "onStart": { "actions": [["knock", "right"], "fall"] }
+      }
+    },
+    {
+      "id": 4,
+      "meta": { "name": "crossover", "characters": ["+"] },
+      "events": {
+        "onKnocked": { "actions": [["knock", "right"]], "relativeTo": "input" }
+      }
+    },
+    {
+      "id": 5,
+      "meta": { "name": "click", "characters": ["▹", "▵", "◃", "▿"] },
+      "events": {
+        "onClicked": { "actions": [["knock", "right"]] }
+      }
     }
-  },
-  {
-    "id": 1,
-    "meta": { "variants": ["\\", "/"] },
-    "events": {
-      "onKnocked:right": { "actions": [["knock", "right"], ["knock", "up"], "fall"] },
-      "onKnocked:up": { "actions": [["knock", "right"], ["knock", "up"], "fall"] },
-      "onKnocked:left": { "actions": [["knock", "left"], ["knock", "down"], "fall"] },
-      "onKnocked:down": { "actions": [["knock", "left"], ["knock", "down"], "fall"] }
-    }
-  },
-  {
-    "id": 2,
-    "meta": { "variants": ["<", "v", ">", "^"] },
-    "events": {
-      "onKnocked:right": {
-        "actions": [["knock", "right"], ["knock", "up"], ["knock", "down"], "fall"],
-        "priority": 1
-      },
-      "onKnocked": { "actions": [["knock", "left"], "fall"] }
-    }
-  },
-  {
-    "id": 4,
-    "meta": { "variants": ["+"] },
-    "events": {
-      "onKnocked": { "actions": [["knock", "right"]], "relativeTo": "input" }
-    }
-  }
-]
+  ]
+}

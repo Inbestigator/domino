@@ -5,12 +5,13 @@ let isPaused = false;
 export function render() {
   if (isPaused) return;
   process.stdout.write("\x1b[H");
+  const stats = `(${cursor.col}, ${cursor.row}) ${nodes.size}`;
 
   for (let y = cursor.row - Math.ceil(ROWS / 2); y < cursor.row + Math.floor(ROWS / 2); ++y) {
     let line = "";
     for (let x = cursor.col - Math.ceil(COLS / 2); x < cursor.col + Math.floor(COLS / 2); ++x) {
       const node = nodes.get(`${x},${y}`);
-      let char = node?.type.meta.variants[node.rotation] ?? " ";
+      let char = node?.type.meta.characters[node.rotation] ?? " ";
       let bg = "";
 
       if (node) {
@@ -28,6 +29,9 @@ export function render() {
       }
 
       const isCursor = cursor.col === x && cursor.row === y;
+      if (y === cursor.row + Math.floor(ROWS / 2) - 1) {
+        char = stats[x - cursor.col + Math.ceil(COLS / 2)] ?? char;
+      }
       if (isCursor) {
         char = `\x1b[7m${bg}${char}\x1b[0m`;
       } else if (node) {
@@ -38,7 +42,6 @@ export function render() {
     }
     process.stdout.write(line);
   }
-  process.stdout.write(`\x1b[${ROWS};1H(${cursor.col}, ${cursor.row}) ${nodes.size}`);
 }
 
 export async function input(prompt: string, initialValue = ""): Promise<string | undefined> {

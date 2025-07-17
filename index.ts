@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { emitKeypressEvents } from "node:readline";
 import { decode, encode } from "./savedata";
-import nodeTypes from "./node-types.json";
+import { dominos } from "./node-types.json";
 import { render, input } from "./rendering";
 import { decodeTbit } from "./tbit-decode";
 
@@ -11,7 +11,7 @@ type Direction = (typeof directions)[number];
 type NodeState = "falling" | "fallen" | "standing";
 export type Rotation = 0 | 1 | 2 | 3;
 type Action = ["changeState", NodeState] | ["knock", Direction] | "fall";
-type BaseEventKey = "onKnocked" | "onClicked";
+type BaseEventKey = "onKnocked" | "onClicked" | "onStart";
 
 export interface Node {
   id: string;
@@ -30,7 +30,7 @@ export interface Event {
 interface NodeType {
   id: number;
   meta: {
-    variants: string[];
+    characters: string[];
   };
   events: {
     [K in BaseEventKey]?: Event;
@@ -53,11 +53,11 @@ const actions = {
     const y = node.position.y + dirY(direction);
     const next = nodes.get(`${x},${y}`);
     if (!next || next.state !== "standing") return;
-    queueEvent(next.id, next, { base: "onKnocked", arg: rotate(direction, 4 - next.rotation) });
+    queueEvent(next.id, next, `onKnocked:${rotate(direction, 4 - next.rotation)}`);
   },
   fall(node: Node) {
     actions.changeState(node, "falling");
-    queueEvent(crypto.randomUUID(), node, {} as never, {
+    queueEvent(crypto.randomUUID(), node, "" as never, {
       actions: [["changeState", "fallen"]],
     });
   },
@@ -69,21 +69,22 @@ const actions = {
 const queue = new Map<string, QueueEntry>();
 
 function queueEvent(
-  key: string,
+  id: string,
   node: Node,
-  part: { base: BaseEventKey; arg: string },
+  key: BaseEventKey | `${BaseEventKey}:${string}`,
   event?: Event
 ) {
-  const parts = queue.get(key)?.parts ?? {};
-  if (!parts[part.base]) parts[part.base] = [];
-  parts[part.base]?.push(part.arg);
-  queue.set(key, { node, parts, event });
+  const parts = queue.get(id)?.parts ?? {};
+  const [base, arg] = key.split(":") as [BaseEventKey, string];
+  if (!parts[base]) parts[base] = [];
+  parts[base]?.push(arg);
+  queue.set(id, { node, parts, event });
 }
 
 setInterval(() => {
   const prev = new Map(queue);
   queue.clear();
-  prev.forEach(({ node, parts, event }, key) => {
+  prev.forEach(({ node, parts, event }) => {
     if (event) {
       return executeEvent(node, event);
     }
@@ -145,13 +146,13 @@ export function addNode(
 ) {
   if (typeof data === "string") {
     const char = data;
-    const type = nodeTypes.find((t) => t.meta.variants.includes(char));
+    const type = dominos.find((t) => t.meta.characters.includes(char));
     if (!type) return;
-    data = { type, rotation: type.meta.variants.indexOf(char) } as unknown as {
+    data = { type, rotation: type.meta.characters.indexOf(char) } as unknown as {
       type: NodeType;
       rotation: Rotation;
     };
-    data.rotation = data.type.meta.variants.indexOf(char) as Rotation;
+    data.rotation = data.type.meta.characters.indexOf(char) as Rotation;
   }
   if (!data || typeof data === "string") return;
   const node = {
@@ -216,7 +217,8 @@ process.stdin.on("keypress", async (_, key) => {
           : "up";
 
       if (!node) break;
-      queueEvent(node.id, node, { base: "onKnocked", arg: rotate(dir, 4 - node.rotation) });
+      queueEvent(node.id, node, `onKnocked:${rotate(dir, 4 - node.rotation)}`);
+      queueEvent(node.id, node, "onClicked");
       break;
     case "r":
       for (const n of nodes.values()) {
@@ -238,9 +240,9 @@ process.stdin.on("keypress", async (_, key) => {
         const decodedData = (saveFile.endsWith("tbit") ? decodeTbit : decode)(data);
         nodes.clear();
         for (const [objectId, x, y, rotation] of decodedData) {
-          const type = nodeTypes.find((t) => t.id === objectId) as NodeType;
+          const type = dominos.find((t) => t.id === objectId) as NodeType;
           if (!type) continue;
-          addNode({ type, rotation: (rotation % type.meta.variants.length) as Rotation }, x, y);
+          addNode({ type, rotation: (rotation % type.meta.characters.length) as Rotation }, x, y);
         }
       } catch {}
       break;
@@ -253,6 +255,13 @@ process.stdin.on("keypress", async (_, key) => {
     case "backspace":
       cursor.col = cursor.col - 1;
       nodes.delete(`${cursor.col},${cursor.row}`);
+      break;
+    case "space":
+      for (const n of nodes.values()) {
+        if (n.type.id === 3) {
+          queueEvent(n.id, n, "onStart");
+        }
+      }
       break;
     default: {
       const node = addNode(key.sequence, cursor.col, cursor.row);
