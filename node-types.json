@@ -1,266 +1,40 @@
 [
   {
     "id": 0,
-    "meta": {
-      "variants": ["|", "-"]
-    },
-    "on": {
-      "knockedRight": {
-        "do": [
-          {
-            "action": "changeState",
-            "state": "falling"
-          },
-          {
-            "action": "knock",
-            "direction": "right"
-          }
-        ],
-        "priority": 1
-      },
-      "knockedUp": {
-        "do": [
-          {
-            "action": "changeState",
-            "state": "falling"
-          },
-          {
-            "action": "knock",
-            "direction": "up"
-          }
-        ],
-        "priority": 0
-      },
-      "knockedLeft": {
-        "do": [
-          {
-            "action": "changeState",
-            "state": "falling"
-          },
-          {
-            "action": "knock",
-            "direction": "left"
-          }
-        ],
-        "priority": 1
-      },
-      "knockedDown": {
-        "do": [
-          {
-            "action": "changeState",
-            "state": "falling"
-          },
-          {
-            "action": "knock",
-            "direction": "down"
-          }
-        ],
-        "priority": 0
-      }
+    "meta": { "variants": ["|", "-"] },
+    "events": {
+      "onKnocked:right": { "actions": [["knock", "right"], "fall"], "priority": 1 },
+      "onKnocked:up": { "actions": [["knock", "up"], "fall"] },
+      "onKnocked:left": { "actions": [["knock", "left"], "fall"], "priority": 1 },
+      "onKnocked:down": { "actions": [["knock", "down"], "fall"] }
     }
   },
   {
     "id": 1,
-    "meta": {
-      "variants": ["\\", "/"]
-    },
-    "on": {
-      "knockedRight": {
-        "do": [
-          {
-            "action": "changeState",
-            "state": "falling"
-          },
-          {
-            "action": "knock",
-            "direction": "right"
-          },
-          {
-            "action": "knock",
-            "direction": "up"
-          }
-        ],
-        "priority": 0
-      },
-      "knockedUp": {
-        "do": [
-          {
-            "action": "changeState",
-            "state": "falling"
-          },
-          {
-            "action": "knock",
-            "direction": "right"
-          },
-          {
-            "action": "knock",
-            "direction": "up"
-          }
-        ],
-        "priority": 0
-      },
-      "knockedLeft": {
-        "do": [
-          {
-            "action": "changeState",
-            "state": "falling"
-          },
-          {
-            "action": "knock",
-            "direction": "left"
-          },
-          {
-            "action": "knock",
-            "direction": "down"
-          }
-        ],
-        "priority": 0
-      },
-      "knockedDown": {
-        "do": [
-          {
-            "action": "changeState",
-            "state": "falling"
-          },
-          {
-            "action": "knock",
-            "direction": "left"
-          },
-          {
-            "action": "knock",
-            "direction": "down"
-          }
-        ],
-        "priority": 0
-      }
+    "meta": { "variants": ["\\", "/"] },
+    "events": {
+      "onKnocked:right": { "actions": [["knock", "right"], ["knock", "up"], "fall"] },
+      "onKnocked:up": { "actions": [["knock", "right"], ["knock", "up"], "fall"] },
+      "onKnocked:left": { "actions": [["knock", "left"], ["knock", "down"], "fall"] },
+      "onKnocked:down": { "actions": [["knock", "left"], ["knock", "down"], "fall"] }
     }
   },
   {
     "id": 2,
-    "meta": {
-      "variants": ["<", "v", ">", "^"]
-    },
-    "on": {
-      "knockedRight": {
-        "do": [
-          {
-            "action": "changeState",
-            "state": "falling"
-          },
-          {
-            "action": "knock",
-            "direction": "right"
-          },
-          {
-            "action": "knock",
-            "direction": "up"
-          },
-          {
-            "action": "knock",
-            "direction": "down"
-          }
-        ],
+    "meta": { "variants": ["<", "v", ">", "^"] },
+    "events": {
+      "onKnocked:right": {
+        "actions": [["knock", "right"], ["knock", "up"], ["knock", "down"], "fall"],
         "priority": 1
       },
-      "knockedUp": {
-        "do": [
-          {
-            "action": "changeState",
-            "state": "falling"
-          },
-          {
-            "action": "knock",
-            "direction": "left"
-          }
-        ],
-        "priority": 0
-      },
-      "knockedLeft": {
-        "do": [
-          {
-            "action": "changeState",
-            "state": "falling"
-          },
-          {
-            "action": "knock",
-            "direction": "left"
-          }
-        ],
-        "priority": 0
-      },
-      "knockedDown": {
-        "do": [
-          {
-            "action": "changeState",
-            "state": "falling"
-          },
-          {
-            "action": "knock",
-            "direction": "left"
-          }
-        ],
-        "priority": 0
-      }
+      "onKnocked": { "actions": [["knock", "left"], "fall"] }
     }
   },
   {
     "id": 4,
-    "meta": {
-      "variants": ["+"]
-    },
-    "on": {
-      "knockedRight": {
-        "do": [
-          {
-            "action": "changeState",
-            "state": "falling"
-          },
-          {
-            "action": "knock",
-            "direction": "right"
-          }
-        ],
-        "priority": 0
-      },
-      "knockedUp": {
-        "do": [
-          {
-            "action": "changeState",
-            "state": "falling"
-          },
-          {
-            "action": "knock",
-            "direction": "up"
-          }
-        ],
-        "priority": 0
-      },
-      "knockedLeft": {
-        "do": [
-          {
-            "action": "changeState",
-            "state": "falling"
-          },
-          {
-            "action": "knock",
-            "direction": "left"
-          }
-        ],
-        "priority": 0
-      },
-      "knockedDown": {
-        "do": [
-          {
-            "action": "changeState",
-            "state": "falling"
-          },
-          {
-            "action": "knock",
-            "direction": "down"
-          }
-        ],
-        "priority": 0
-      }
+    "meta": { "variants": ["+"] },
+    "events": {
+      "onKnocked": { "actions": [["knock", "right"]], "relativeTo": "input" }
     }
   }
 ]

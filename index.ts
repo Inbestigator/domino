@@ -10,6 +10,8 @@ const directions = ["right", "up", "left", "down"] as const;
 type Direction = (typeof directions)[number];
 type NodeState = "falling" | "fallen" | "standing";
 export type Rotation = 0 | 1 | 2 | 3;
+type Action = ["changeState", NodeState] | ["knock", Direction] | "fall";
+type BaseEventKey = "onKnocked" | "onClicked";
 
 export interface Node {
   id: string;
@@ -19,13 +21,10 @@ export interface Node {
   rotation: Rotation;
 }
 
-type Action =
-  | { action: "changeState"; state: NodeState }
-  | { action: "knock"; direction: Direction };
-
-interface Interaction {
-  do: Action[];
-  priority: number;
+export interface Event {
+  actions: Action[];
+  priority?: number;
+  relativeTo?: "self" | "world" | "input";
 }
 
 interface NodeType {
@@ -33,71 +32,111 @@ interface NodeType {
   meta: {
     variants: string[];
   };
-  on: {
-    knockedRight?: Interaction;
-    knockedUp?: Interaction;
-    knockedLeft?: Interaction;
-    knockedDown?: Interaction;
+  events: {
+    [K in BaseEventKey]?: Event;
+  } & {
+    [key: `${BaseEventKey}:${string}`]: Event;
   };
+}
+
+export interface QueueEntry {
+  node: Node;
+  parts: Partial<Record<BaseEventKey, string[]>>;
+  event?: Event;
 }
 
 export const nodes = new Map<`${number},${number}`, Node>();
 
-const queue = new Map<string, [Interaction, { x: number; y: number }]>();
-function queueInteraction(key: string, interaction: Interaction, node: Node) {
-  const existing = queue.get(key);
-  if (!existing || interaction.priority > existing[0].priority) {
-    queue.set(key, [interaction, node.position]);
-  }
-}
-
 const actions = {
-  knock(action: { direction: Direction }, node: Node) {
-    const x = node.position.x + dirX(action.direction);
-    const y = node.position.y + dirY(action.direction);
+  knock(node: Node, direction: Direction) {
+    const x = node.position.x + dirX(direction);
+    const y = node.position.y + dirY(direction);
     const next = nodes.get(`${x},${y}`);
-    const interaction = next ? getRotatedInteraction(next, action.direction) : undefined;
-    if (!next || !interaction || next.state !== "standing") return;
-    queueInteraction(next.id, interaction, next);
+    if (!next || next.state !== "standing") return;
+    queueEvent(next.id, next, { base: "onKnocked", arg: rotate(direction, 4 - next.rotation) });
   },
-  changeState(action: { state: NodeState }, node: Node) {
-    node.state = action.state;
-    if (node.state === "falling") {
-      queueInteraction(
-        crypto.randomUUID(),
-        { do: [{ action: "changeState", state: "fallen" }], priority: 1 },
-        node
-      );
-    }
+  fall(node: Node) {
+    actions.changeState(node, "falling");
+    queueEvent(crypto.randomUUID(), node, {} as never, {
+      actions: [["changeState", "fallen"]],
+    });
+  },
+  changeState(node: Node, state: NodeState) {
+    node.state = state;
   },
 };
+
+const queue = new Map<string, QueueEntry>();
+
+function queueEvent(
+  key: string,
+  node: Node,
+  part: { base: BaseEventKey; arg: string },
+  event?: Event
+) {
+  const parts = queue.get(key)?.parts ?? {};
+  if (!parts[part.base]) parts[part.base] = [];
+  parts[part.base]?.push(part.arg);
+  queue.set(key, { node, parts, event });
+}
 
 setInterval(() => {
   const prev = new Map(queue);
   queue.clear();
-  prev.forEach(([i, p]) => {
-    for (const action of i.do) {
-      actions[action.action](action as never, nodes.get(`${p.x},${p.y}`)!);
+  prev.forEach(({ node, parts, event }, key) => {
+    if (key.startsWith("execute") && event) {
+      return executeEvent(node, event);
+    }
+    const events = Object.entries(node.type.events).sort(
+      (a, b) => (a[1].priority ?? 0) - (b[1].priority ?? 0)
+    );
+    let best: { event: Event; dir?: Direction; priority: number; argLen: number } | undefined;
+    for (const [key, event] of events) {
+      const [base, ...args] = key.split(/[:,]/) as [BaseEventKey, ...string[]];
+      const part = parts[base];
+      if (!part) continue;
+      const priority = event.priority ?? 0;
+      const presentArgs = args.filter((arg) => part.includes(arg));
+
+      if (
+        !best ||
+        (presentArgs.length === args.length &&
+          (priority > best.priority ||
+            (priority === best.priority && presentArgs.length > best.argLen)))
+      ) {
+        best = { event, dir: part[0] as Direction, argLen: presentArgs.length, priority };
+      }
+    }
+    if (best) {
+      executeEvent(node, best.event, best.dir);
     }
   });
 }, 50);
 
+function executeEvent(node: Node, event: Event, inputDir: Direction = "right") {
+  for (const action of event.actions) {
+    if (typeof action === "string") {
+      actions[action](node);
+      return;
+    }
+    let [key, arg] = action;
+    if (key === "knock") {
+      arg = rotate(
+        arg as never,
+        event.relativeTo === "input"
+          ? directions.indexOf(inputDir)
+          : event.relativeTo === "world"
+          ? 0
+          : node.rotation
+      );
+    }
+    actions[key](node, arg as never);
+  }
+}
+
 const dirX = (dir: Direction) => ({ right: 1, up: 0, left: -1, down: 0 }[dir]);
 const dirY = (dir: Direction) => ({ right: 0, up: -1, left: 0, down: 1 }[dir]);
-const capitalize = <T extends string>(s: T): Capitalize<T> =>
-  (s[0]!.toUpperCase() + s.slice(1)) as Capitalize<T>;
 const rotate = (d: Direction, r: number) => directions[(directions.indexOf(d) + r) % 4]!;
-
-function getRotatedInteraction({ rotation, type }: Node, dir: Direction): Interaction | undefined {
-  const interaction = type.on[`knocked${capitalize(rotate(dir, 4 - rotation))}`];
-  if (!interaction) return;
-  return {
-    priority: interaction.priority,
-    do: interaction.do.map((action) =>
-      "direction" in action ? { ...action, direction: rotate(action.direction, rotation) } : action
-    ),
-  };
-}
 
 export function addNode(
   data: string | { type: NodeType; rotation: Rotation },
@@ -174,11 +213,10 @@ process.stdin.on("keypress", async (_, key) => {
             : "left"
           : cursor.modulus === 1
           ? "down"
-          : ("up" as const);
+          : "up";
 
-      const interaction = node ? getRotatedInteraction(node, dir) : undefined;
-      if (!node || !interaction) break;
-      queueInteraction(node.id, interaction, node);
+      if (!node) break;
+      queueEvent(node.id, node, { base: "onKnocked", arg: rotate(dir, 4 - node.rotation) });
       break;
     case "r":
       for (const n of nodes.values()) {
