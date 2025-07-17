@@ -84,7 +84,7 @@ setInterval(() => {
   const prev = new Map(queue);
   queue.clear();
   prev.forEach(({ node, parts, event }, key) => {
-    if (key.startsWith("execute") && event) {
+    if (event) {
       return executeEvent(node, event);
     }
     const events = Object.entries(node.type.events).sort(
@@ -186,22 +186,22 @@ process.stdin.on("keypress", async (_, key) => {
   switch (key.name) {
     case "right":
       cursor.modulus = 1;
-      cursor.col = cursor.col + 1;
+      cursor.col = cursor.col + (key.shift ? 3 : 1);
       cursor.dir = "h";
       break;
     case "up":
       cursor.modulus = -1;
-      cursor.row = cursor.row - 1;
+      cursor.row = cursor.row - (key.shift ? 3 : 1);
       cursor.dir = "v";
       break;
     case "left":
       cursor.modulus = -1;
-      cursor.col = cursor.col - 1;
+      cursor.col = cursor.col - (key.shift ? 3 : 1);
       cursor.dir = "h";
       break;
     case "down":
       cursor.modulus = 1;
-      cursor.row = cursor.row + 1;
+      cursor.row = cursor.row + (key.shift ? 3 : 1);
       cursor.dir = "v";
       break;
     case "return":
