@@ -1,5 +1,5 @@
 import createInstance from "..";
-import { decode } from "../savedata";
+import { decodeTbit } from "../tbit-decode";
 import type { Project } from "./types";
 
 const dropZone = document.getElementById("drop-zone")!;
@@ -22,11 +22,10 @@ dropZone.addEventListener("drop", async (e) => {
   if (!file) return;
 
   try {
-    const contents = new Uint8Array(await file.arrayBuffer()).toBase64();
     const res = await fetch("/api/projects", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: prompt("Name:"), data: contents }),
+      body: JSON.stringify({ name: prompt("Name:"), data: await file.text() }),
     });
 
     if (!res.ok) throw new Error(`Upload failed: ${res.statusText}`);
@@ -77,8 +76,7 @@ async function fetchProjects() {
       title.textContent = project.name;
       projectDiv.appendChild(title);
 
-      const decodedData = base64ToUint8Array(project.data.data);
-      const decoded = decode(decodedData);
+      const decoded = decodeTbit(project.data.data);
 
       const TILE_SIZE = 12;
       const REGION_SIZE = 100;
@@ -111,7 +109,8 @@ async function fetchProjects() {
       const button = document.createElement("button");
       button.className = "button";
       button.textContent = "Download";
-      button.onclick = () => downloadBlob(decodedData, `${project.name}.tbit`);
+      button.onclick = () =>
+        downloadBlob(new TextEncoder().encode(project.data.data), `${project.name}.tbit`);
       projectDiv.appendChild(button);
 
       container.appendChild(projectDiv);

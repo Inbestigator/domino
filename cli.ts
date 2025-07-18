@@ -1,6 +1,5 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { emitKeypressEvents } from "node:readline";
-import { decode, encode } from "./savedata";
 import { decodeTbit } from "./tbit-decode";
 import createInstance, { rotate, type Rotation } from ".";
 import { stdout } from "bun";
@@ -158,15 +157,15 @@ process.stdin.on("keypress", async (_, key) => {
       if (!saveFile) break;
       const data: [number, number, number, Rotation][] = [];
       for (const [_, node] of instance.nodes) {
-        data.push([node.type.id, node.position.x, node.position.y, node.rotation]);
+        data.push([node.type.id, node.position.x, -node.position.y, node.rotation]);
       }
-      writeFileSync(saveFile, encode(data));
+      writeFileSync(saveFile, data.join(","));
       break;
     case "l":
       if (!saveFile || !existsSync(saveFile)) break;
       try {
-        const data = readFileSync(saveFile);
-        const decodedData = (saveFile.endsWith("tbit") ? decodeTbit : decode)(data);
+        const data = readFileSync(saveFile, "utf8");
+        const decodedData = decodeTbit(data);
         instance.load(decodedData);
       } catch {}
       break;

@@ -5,7 +5,11 @@ const directions = ["right", "up", "left", "down"] as const;
 type Direction = (typeof directions)[number];
 type NodeState = "falling" | "fallen" | "standing";
 export type Rotation = 0 | 1 | 2 | 3;
-type Action = ["changeState", NodeState] | ["knock", Direction] | "fall";
+type Action =
+  | ["changeState", NodeState]
+  | ["changeRotation", Rotation]
+  | ["knock", Direction]
+  | "fall";
 type BaseEventKey = "onKnocked" | "onClicked" | "onStart";
 
 export interface Node {
@@ -63,6 +67,9 @@ export default function createInstance() {
     },
     changeState(node: Node, state: NodeState) {
       node.state = state;
+    },
+    changeRotation(node: Node, rotation: Rotation) {
+      node.rotation = ((node.rotation + rotation) % node.type.meta.characters.length) as Rotation;
     },
   };
 

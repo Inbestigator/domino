@@ -1,7 +1,7 @@
 import type { Rotation } from ".";
 
-export function decodeTbit(data: Uint8Array) {
-  const bits = data.toString().split(",").slice(0, -1).map(Number) as number[];
+export function decodeTbit(data: string) {
+  const bits = data.split(",").filter(Boolean).map(Number) as number[];
   const out: [number, number, number, Rotation][] = [];
 
   for (let i = 0; i < bits.length; i += 4) {

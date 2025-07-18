@@ -30,27 +30,9 @@ async function main() {
     }
 
     const id = crypto.randomUUID();
+    const parsed = data.split(",").filter(Boolean).map(Number);
 
-    try {
-      const parsed = atob(data).split(",").slice(0, -1).map(Number);
-      if (
-        Array.isArray(parsed) &&
-        parsed.every((v) => typeof v === "number" && !isNaN(v)) &&
-        parsed.length % 4 === 0
-      ) {
-        const grouped: number[][] = [];
-        for (let i = 0; i < parsed.length; i += 4) {
-          grouped.push(parsed.slice(i, i + 4));
-        }
-
-        data = base64FromArrayBuffer(encode(grouped as never));
-      }
-    } catch (e) {
-      console.log(e);
-      data = "1";
-    }
-
-    if (atob(data).length % 5 !== 0) {
+    if (!Array.isArray(parsed) || parsed.some(isNaN) || parsed.length % 4 !== 0) {
       res.status(400).send("Invalid format");
       return;
     }
@@ -75,31 +57,3 @@ async function main() {
 }
 
 main();
-
-function base64FromArrayBuffer(bytes: Uint8Array) {
-  let binary = "";
-  for (let i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i]!);
-  }
-  return btoa(binary);
-}
-
-function encode(nodes: [number, number, number, number][]) {
-  const bytes = new Uint8Array(nodes.length * 5);
-  nodes.forEach(([objectId, x, y, rotation], index) => {
-    const x16 = x & 0xffff;
-    const y16 = -y & 0xffff;
-
-    let encoded = 0n;
-    encoded = (encoded << 6n) | BigInt(objectId & 0x3f);
-    encoded = (encoded << 16n) | BigInt(x16);
-    encoded = (encoded << 16n) | BigInt(y16);
-    encoded = (encoded << 2n) | BigInt(rotation & 0x3);
-
-    for (let i = 0; i < 5; i++) {
-      const shift = BigInt((4 - i) * 8);
-      bytes[index * 5 + i] = Number((encoded >> shift) & 0xffn);
-    }
-  });
-  return bytes;
-}

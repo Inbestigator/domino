@@ -6,10 +6,16 @@
       "id": 0,
       "meta": { "name": "orthogonal", "characters": ["|", "-"] },
       "events": {
-        "onKnocked:right": { "actions": [["knock", "right"], "fall"], "priority": 1 },
-        "onKnocked:up": { "actions": [["knock", "up"], "fall"] },
-        "onKnocked:left": { "actions": [["knock", "left"], "fall"], "priority": 1 },
-        "onKnocked:down": { "actions": [["knock", "down"], "fall"] }
+        "onKnocked:right": {
+          "actions": [["knock", "right"], ["changeRotation", 0], "fall"],
+          "priority": 1
+        },
+        "onKnocked:up": { "actions": [["knock", "up"], ["changeRotation", 1], "fall"] },
+        "onKnocked:left": {
+          "actions": [["knock", "left"], ["changeRotation", 0], "fall"],
+          "priority": 1
+        },
+        "onKnocked:down": { "actions": [["knock", "down"], ["changeRotation", 1], "fall"] }
       }
     },
     {
