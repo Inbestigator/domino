@@ -116,7 +116,6 @@ async function fetchProjects() {
       container.appendChild(projectDiv);
 
       const instance = createInstance();
-      instance.load(decoded);
 
       let hasScrolled = false;
       const nodeElements = new Map<string, HTMLDivElement>();
@@ -207,14 +206,30 @@ async function fetchProjects() {
           });
         }
       }
-
-      renderGrid();
-      for (const node of instance.nodes.values()) {
-        if (node.type.id === 3) {
-          instance.queueEvent(node.id, node, "onStart");
+      function reload() {
+        instance.load(decoded);
+        for (const node of instance.nodes.values()) {
+          if (node.type.id === 3) {
+            instance.queueEvent(node.id, node, "onStart");
+          }
         }
       }
-      setInterval(renderGrid, 50);
+      reload();
+      renderGrid();
+      let idleTicks = 0;
+
+      setInterval(() => {
+        renderGrid();
+        if (instance.queue.size === 0) {
+          ++idleTicks;
+          if (idleTicks >= 20) {
+            idleTicks = 0;
+            reload();
+          }
+        } else {
+          idleTicks = 0;
+        }
+      }, 50);
     });
   } catch (err) {
     if (err instanceof Error) {
