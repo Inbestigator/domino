@@ -2,8 +2,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { emitKeypressEvents } from "node:readline";
 import { decode, encode } from "./savedata";
 import { decodeTbit } from "./tbit-decode";
-import createInstance, { rotate, type NodeType, type Rotation } from ".";
-import { dominos } from "./node-types.json";
+import createInstance, { rotate, type Rotation } from ".";
 import { stdout } from "bun";
 
 export const ROWS = process.stdout.rows;
