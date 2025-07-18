@@ -1,0 +1,13 @@
+{
+  "name": "www",
+  "scripts": {
+    "bundle": "bun esbuild client.ts > public/client.js --bundle --minify"
+  },
+  "dependencies": {
+    "@types/express": "^5.0.3",
+    "esbuild": "^0.25.6",
+    "express": "^5.1.0",
+    "express-fingerprint": "^1.2.2",
+    "redis": "^5.6.0"
+  }
+}

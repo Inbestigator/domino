@@ -1,10 +1,11 @@
+import { stdout } from "bun";
 import { COLS, cursor, nodes, ROWS } from ".";
 
 let isPaused = false;
 
 export function render() {
   if (isPaused) return;
-  process.stdout.write("\x1b[H");
+  stdout.write("\x1b[H");
   const stats = `(${cursor.col}, ${cursor.row}) ${nodes.size}`;
 
   for (let y = cursor.row - Math.ceil(ROWS / 2); y < cursor.row + Math.floor(ROWS / 2); ++y) {
@@ -40,7 +41,7 @@ export function render() {
 
       line += char;
     }
-    process.stdout.write(line);
+    stdout.write(line);
   }
 }
 
@@ -53,14 +54,14 @@ export async function input(prompt: string, initialValue = ""): Promise<string |
 
   const maxInputLength = width - prompt.length - 4;
 
-  process.stdout.write(`\x1b[${boxTop};${boxLeft}H╭${"─".repeat(width - 2)}╮`);
-  process.stdout.write(`\x1b[${boxTop + 1};${boxLeft}H│${" ".repeat(width - 2)}│`);
-  process.stdout.write(`\x1b[${boxTop + 2};${boxLeft}H╰${"─".repeat(width - 2)}╯`);
+  stdout.write(`\x1b[${boxTop};${boxLeft}H╭${"─".repeat(width - 2)}╮`);
+  stdout.write(`\x1b[${boxTop + 1};${boxLeft}H│${" ".repeat(width - 2)}│`);
+  stdout.write(`\x1b[${boxTop + 2};${boxLeft}H╰${"─".repeat(width - 2)}╯`);
 
   function renderInput() {
     const visible = value.slice(-maxInputLength);
     const padded = visible + " ".repeat(maxInputLength - visible.length);
-    process.stdout.write(`\x1b[${boxTop + 1};${boxLeft + 1}H${prompt} ${padded}`);
+    stdout.write(`\x1b[${boxTop + 1};${boxLeft + 1}H${prompt} ${padded}`);
   }
 
   renderInput();
