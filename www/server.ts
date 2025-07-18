@@ -1,7 +1,8 @@
 import express from "express";
 import Fingerprint from "express-fingerprint";
 import { createClient } from "redis";
-import type { Project } from "../types";
+import type { Project } from "./types";
+import { encode } from "../savedata";
 
 async function main() {
   const redis = createClient({ url: process.env.REDIS_URL });
@@ -82,24 +83,4 @@ function base64FromArrayBuffer(bytes: Uint8Array) {
     binary += String.fromCharCode(bytes[i]!);
   }
   return btoa(binary);
-}
-
-function encode(nodes: [number, number, number, number][]) {
-  const bytes = new Uint8Array(nodes.length * 5);
-  nodes.forEach(([objectId, x, y, rotation], index) => {
-    const x16 = x & 0xffff;
-    const y16 = -y & 0xffff;
-
-    let encoded = 0n;
-    encoded = (encoded << 6n) | BigInt(objectId & 0x3f);
-    encoded = (encoded << 16n) | BigInt(x16);
-    encoded = (encoded << 16n) | BigInt(y16);
-    encoded = (encoded << 2n) | BigInt(rotation & 0x3);
-
-    for (let i = 0; i < 5; i++) {
-      const shift = BigInt((4 - i) * 8);
-      bytes[index * 5 + i] = Number((encoded >> shift) & 0xffn);
-    }
-  });
-  return bytes;
 }

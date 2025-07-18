@@ -1,6 +1,5 @@
 {
   "name": "domino",
-  "module": "index.ts",
   "type": "module",
   "private": true,
   "workspaces": [

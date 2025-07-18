@@ -1,7 +1,9 @@
 {
   "name": "www",
+  "type": "module",
   "scripts": {
-    "bundle": "bun esbuild client.ts > public/client.js --bundle --minify"
+    "bundle": "bun esbuild client.ts > public/client.js --bundle --minify",
+    "publish": "bun bundle && vercel"
   },
   "dependencies": {
     "@types/express": "^5.0.3",

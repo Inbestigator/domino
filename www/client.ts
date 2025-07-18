@@ -1,4 +1,5 @@
-import { decode } from "./savedata";
+import createInstance from "..";
+import { decode } from "../savedata";
 import type { Project } from "./types";
 
 const dropZone = document.getElementById("drop-zone")!;
@@ -80,11 +81,12 @@ async function fetchProjects() {
       const decoded = decode(decodedData);
 
       const TILE_SIZE = 12;
-      let minX = Infinity,
-        minY = Infinity;
-      let maxX = -Infinity,
-        maxY = -Infinity;
+      const REGION_SIZE = 100;
 
+      let minX = Infinity,
+        minY = Infinity,
+        maxX = -Infinity,
+        maxY = -Infinity;
       for (const [, x, y] of decoded) {
         if (x < minX) minX = x;
         if (y < minY) minY = y;
@@ -100,50 +102,8 @@ async function fetchProjects() {
 
       const grid = document.createElement("div");
       grid.className = "grid";
-
       grid.style.width = (maxX - minX + 1) * TILE_SIZE + "px";
       grid.style.height = (maxY - minY + 1) * TILE_SIZE + "px";
-
-      const densityMap = new Map();
-      const REGION_SIZE = 100;
-
-      for (const [objectId, x, y, rotation] of decoded) {
-        const tile = document.createElement("div");
-        tile.className = "tile";
-        tile.style.left = `${(x + offsetX) * TILE_SIZE}px`;
-        tile.style.top = `${(y + offsetY) * TILE_SIZE}px`;
-
-        const img = document.createElement("img");
-        img.src = `/${objectId}.png`;
-        img.alt = `Object ${objectId}`;
-        img.style.transform = `rotate(${rotation * 90}deg)`;
-
-        tile.appendChild(img);
-        grid.appendChild(tile);
-
-        const px = (x + offsetX) * TILE_SIZE;
-        const py = (y + offsetY) * TILE_SIZE;
-        const col = Math.floor(px / REGION_SIZE);
-        const row = Math.floor(py / REGION_SIZE);
-        const key = `${col},${row}`;
-        densityMap.set(key, (densityMap.get(key) || 0) + 1);
-      }
-
-      let maxCount = -1,
-        targetCol = 0,
-        targetRow = 0;
-      for (const [key, count] of densityMap.entries()) {
-        if (count > maxCount) {
-          maxCount = count;
-          [targetCol, targetRow] = key.split(",").map(Number);
-        }
-      }
-
-      requestAnimationFrame(() => {
-        const scrollX = targetCol * REGION_SIZE + REGION_SIZE / 2 - gridContainer.clientWidth / 2;
-        const scrollY = targetRow * REGION_SIZE + REGION_SIZE / 2 - gridContainer.clientHeight / 2;
-        gridContainer.scrollTo({ left: scrollX, top: scrollY, behavior: "smooth" });
-      });
 
       gridContainer.appendChild(grid);
       projectDiv.appendChild(gridContainer);
@@ -155,6 +115,107 @@ async function fetchProjects() {
       projectDiv.appendChild(button);
 
       container.appendChild(projectDiv);
+
+      const instance = createInstance();
+      instance.load(decoded);
+
+      let hasScrolled = false;
+      const nodeElements = new Map<string, HTMLDivElement>();
+      let lastNodeStates = new Map<string, string>();
+
+      function renderGrid() {
+        const seen = new Set<string>();
+        for (const node of instance.nodes.values()) {
+          const {
+            id,
+            type: { id: objectId },
+            position: { x, y },
+            state,
+            rotation,
+          } = node;
+
+          const key = `${x},${y},${state},${rotation},${objectId}`;
+          if (lastNodeStates.get(id) === key) {
+            seen.add(id);
+            continue;
+          }
+
+          lastNodeStates.set(id, key);
+          seen.add(id);
+
+          let tile = nodeElements.get(id);
+          if (!tile) {
+            tile = document.createElement("div");
+            tile.className = "tile";
+            nodeElements.set(id, tile);
+            grid.appendChild(tile);
+          }
+
+          tile.style.left = `${(x + offsetX) * TILE_SIZE}px`;
+          tile.style.top = `${(y + offsetY) * TILE_SIZE}px`;
+          tile.style.cursor = objectId === 5 ? "pointer" : "default";
+          tile.onclick = objectId === 5 ? () => instance.queueEvent(id, node, "onClicked") : null;
+
+          let img = tile.querySelector("img") as HTMLImageElement | null;
+          if (!img) {
+            img = document.createElement("img");
+            tile.appendChild(img);
+          }
+
+          img.src = `/${objectId}.png`;
+          img.alt = `Object ${objectId}`;
+          img.style.transform = `rotate(${rotation * -90}deg)`;
+          img.style.filter =
+            state === "fallen" ? "invert(1)" : state === "falling" ? "invert(0.5)" : "";
+        }
+
+        for (const [id, el] of nodeElements) {
+          if (!seen.has(id)) {
+            el.remove();
+            nodeElements.delete(id);
+            lastNodeStates.delete(id);
+          }
+        }
+
+        if (!hasScrolled) {
+          hasScrolled = true;
+          const densityMap = new Map();
+          for (const node of instance.nodes.values()) {
+            const px = (node.position.x + offsetX) * TILE_SIZE;
+            const py = (node.position.y + offsetY) * TILE_SIZE;
+            const col = Math.floor(px / REGION_SIZE);
+            const row = Math.floor(py / REGION_SIZE);
+            const key = `${col},${row}`;
+            densityMap.set(key, (densityMap.get(key) || 0) + 1);
+          }
+
+          let maxCount = -1,
+            targetCol = 0,
+            targetRow = 0;
+          for (const [key, count] of densityMap.entries()) {
+            if (count > maxCount) {
+              maxCount = count;
+              [targetCol, targetRow] = key.split(",").map(Number);
+            }
+          }
+
+          requestAnimationFrame(() => {
+            const scrollX =
+              targetCol * REGION_SIZE + REGION_SIZE / 2 - gridContainer.clientWidth / 2;
+            const scrollY =
+              targetRow * REGION_SIZE + REGION_SIZE / 2 - gridContainer.clientHeight / 2;
+            gridContainer.scrollTo({ left: scrollX, top: scrollY, behavior: "smooth" });
+          });
+        }
+      }
+
+      renderGrid();
+      for (const node of instance.nodes.values()) {
+        if (node.type.id === 3) {
+          instance.queueEvent(node.id, node, "onStart");
+        }
+      }
+      setInterval(renderGrid, 50);
     });
   } catch (err) {
     if (err instanceof Error) {
