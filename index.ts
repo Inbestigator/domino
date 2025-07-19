@@ -9,7 +9,9 @@ type Action =
   | ["changeState", NodeState]
   | ["changeRotation", Rotation]
   | ["knock", Direction]
-  | "fall";
+  | ["unKnock", Direction]
+  | "fall"
+  | "stand";
 type BaseEventKey = "onKnocked" | "onClicked" | "onStart";
 
 export interface Node {
@@ -42,11 +44,21 @@ export interface QueueEntry {
   node: Node;
   parts: Partial<Record<BaseEventKey, string[]>>;
   event?: Event;
+  inverted?: boolean;
 }
 
 export const dirX = (dir: Direction) => ({ right: 1, up: 0, left: -1, down: 0 }[dir]);
 export const dirY = (dir: Direction) => ({ right: 0, up: -1, left: 0, down: 1 }[dir]);
 export const rotate = (d: Direction, r: number) => directions[(directions.indexOf(d) + r) % 4]!;
+
+const invertedActions = {
+  fall: "stand",
+  stand: "fall",
+  knock: "unKnock",
+  unKnock: "knock",
+  changeState: "changeState",
+  changeRotation: "changeRotation",
+} as const;
 
 export default function createInstance() {
   const nodes = new Map<`${number},${number}`, Node>();
@@ -59,10 +71,29 @@ export default function createInstance() {
       if (!next || next.state !== "standing") return;
       queueEvent(next.id, next, `onKnocked:${rotate(direction, 4 - next.rotation)}`);
     },
+    unKnock(node: Node, direction: Direction) {
+      const x = node.position.x + dirX(direction);
+      const y = node.position.y + dirY(direction);
+      const next = nodes.get(`${x},${y}`);
+      if (!next || next.state !== "fallen") return;
+      queueEvent(next.id, next, `onKnocked:${rotate(direction, 4 - next.rotation)}`, {
+        inverted: true,
+      });
+    },
     fall(node: Node) {
       actions.changeState(node, "falling");
       queueEvent(crypto.randomUUID(), node, "" as never, {
-        actions: [["changeState", "fallen"]],
+        event: {
+          actions: [["changeState", "fallen"]],
+        },
+      });
+    },
+    stand(node: Node) {
+      actions.changeState(node, "falling");
+      queueEvent(crypto.randomUUID(), node, "" as never, {
+        event: {
+          actions: [["changeState", "standing"]],
+        },
       });
     },
     changeState(node: Node, state: NodeState) {
@@ -79,21 +110,21 @@ export default function createInstance() {
     id: string,
     node: Node,
     key: BaseEventKey | `${BaseEventKey}:${string}`,
-    event?: Event
+    data: { event?: Event; inverted?: boolean } = {}
   ) {
     const parts = queue.get(id)?.parts ?? {};
     const [base, arg] = key.split(":") as [BaseEventKey, string];
     if (!parts[base]) parts[base] = [];
     parts[base]?.push(arg);
-    queue.set(id, { node, parts, event });
+    queue.set(id, { node, parts, ...data });
   }
 
   setInterval(() => {
     const prev = new Map(queue);
     queue.clear();
-    prev.forEach(({ node, parts, event }) => {
+    prev.forEach(({ node, parts, event, inverted }) => {
       if (event) {
-        return executeEvent(node, event);
+        return executeEvent(node, event, undefined, inverted);
       }
       const events = Object.entries(node.type.events).sort(
         (a, b) => (a[1].priority ?? 0) - (b[1].priority ?? 0)
@@ -116,19 +147,25 @@ export default function createInstance() {
         }
       }
       if (best) {
-        executeEvent(node, best.event, best.dir);
+        executeEvent(node, best.event, best.dir, inverted);
       }
     });
   }, 50);
 
-  function executeEvent(node: Node, event: Event, inputDir: Direction = "right") {
+  function executeEvent(
+    node: Node,
+    event: Event,
+    inputDir: Direction = "right",
+    inverted?: boolean
+  ) {
     for (const action of event.actions) {
       if (typeof action === "string") {
-        actions[action](node);
+        actions[inverted ? invertedActions[action] : action](node);
         return;
       }
       let [key, arg] = action;
-      if (key === "knock") {
+      if (inverted) key = invertedActions[key];
+      if (["knock", "unKnock"].includes(key)) {
         arg = rotate(
           arg as never,
           event.relativeTo === "input"

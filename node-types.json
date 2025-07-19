@@ -59,6 +59,13 @@
       "events": {
         "onClicked": { "actions": [["knock", "right"]] }
       }
+    },
+    {
+      "id": 6,
+      "meta": { "name": "unknock", "characters": ["X"], "inComplete": true },
+      "events": {
+        "onKnocked": { "actions": [["unKnock", "right"], "fall"], "relativeTo": "input" }
+      }
     }
   ]
 }
