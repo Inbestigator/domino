@@ -4,12 +4,7 @@ type Direction = (typeof directions)[number];
 type NodeState = "falling" | "fallen" | "standing";
 export type Rotation = 0 | 1 | 2 | 3;
 type Action =
-  | ["changeState", NodeState]
-  | ["changeRotation", Rotation]
-  | ["knock", Direction]
-  | ["unknock", Direction]
-  | "fall"
-  | "stand";
+  | ["changeState" | "changeRotation" | "knock" | "unknock" | "fall" | "stand", (string | number)?];
 type BaseEventKey = "onKnocked" | "onClicked" | "onStart";
 
 export interface Node {
@@ -159,10 +154,6 @@ export default function createInstance(dominos: NodeType[]) {
     inverted?: boolean
   ) {
     for (const action of event.actions) {
-      if (typeof action === "string") {
-        actions[inverted ? invertedActions[action] : action](node);
-        return;
-      }
       let [key, arg] = action;
       if (inverted) key = invertedActions[key];
       if (["knock", "unknock"].includes(key)) {

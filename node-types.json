@@ -7,25 +7,25 @@
       "meta": { "name": "orthogonal", "tjs.characters": ["|", "-"] },
       "events": {
         "onKnocked:right": {
-          "actions": [["knock", "right"], ["changeRotation", 0], "fall"],
+          "actions": [["knock", "right"], ["changeRotation", 0], ["fall"]],
           "priority": 1
         },
-        "onKnocked:up": { "actions": [["knock", "up"], ["changeRotation", 1], "fall"] },
+        "onKnocked:up": { "actions": [["knock", "up"], ["changeRotation", 1], ["fall"]] },
         "onKnocked:left": {
-          "actions": [["knock", "left"], ["changeRotation", 0], "fall"],
+          "actions": [["knock", "left"], ["changeRotation", 0], ["fall"]],
           "priority": 1
         },
-        "onKnocked:down": { "actions": [["knock", "down"], ["changeRotation", 1], "fall"] }
+        "onKnocked:down": { "actions": [["knock", "down"], ["changeRotation", 1], ["fall"]] }
       }
     },
     {
       "id": 1,
       "meta": { "name": "diagonal", "tjs.characters": ["\\", "/"] },
       "events": {
-        "onKnocked:right": { "actions": [["knock", "right"], ["knock", "up"], "fall"] },
-        "onKnocked:up": { "actions": [["knock", "right"], ["knock", "up"], "fall"] },
-        "onKnocked:left": { "actions": [["knock", "left"], ["knock", "down"], "fall"] },
-        "onKnocked:down": { "actions": [["knock", "left"], ["knock", "down"], "fall"] }
+        "onKnocked:right": { "actions": [["knock", "right"], ["knock", "up"], ["fall"]] },
+        "onKnocked:up": { "actions": [["knock", "right"], ["knock", "up"], ["fall"]] },
+        "onKnocked:left": { "actions": [["knock", "left"], ["knock", "down"], ["fall"]] },
+        "onKnocked:down": { "actions": [["knock", "left"], ["knock", "down"], ["fall"]] }
       }
     },
     {
@@ -33,17 +33,17 @@
       "meta": { "name": "fork", "tjs.characters": ["<", "v", ">", "^"] },
       "events": {
         "onKnocked:right": {
-          "actions": [["knock", "right"], ["knock", "up"], ["knock", "down"], "fall"],
+          "actions": [["knock", "right"], ["knock", "up"], ["knock", "down"], ["fall"]],
           "priority": 1
         },
-        "onKnocked": { "actions": [["knock", "left"], "fall"] }
+        "onKnocked": { "actions": [["knock", "left"], ["fall"]] }
       }
     },
     {
       "id": 3,
       "meta": { "name": "trigger", "tjs.characters": ["▸", "▴", "◂", "▾"] },
       "events": {
-        "onStart": { "actions": [["knock", "right"], "fall"] }
+        "onStart": { "actions": [["knock", "right"], ["fall"]] }
       }
     },
     {
