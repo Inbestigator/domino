@@ -1,3 +1,4 @@
+import { dominos } from "./node-types.json";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { emitKeypressEvents } from "node:readline";
 import { decodeTbit } from "./tbit-decode";
@@ -24,7 +25,7 @@ function render() {
     let line = "";
     for (let x = cursor.col - Math.ceil(COLS / 2); x < cursor.col + Math.floor(COLS / 2); ++x) {
       const node = instance.nodes.get(`${x},${y}`);
-      let char = node?.type.meta.characters[node.rotation] ?? " ";
+      let char = node?.type.meta["tjs.characters"][node.rotation] ?? " ";
       let bg = "";
 
       if (node) {
@@ -102,7 +103,7 @@ async function input(prompt: string, initialValue = ""): Promise<string | undefi
   });
 }
 
-const instance = createInstance();
+const instance = createInstance(dominos as never);
 
 process.stdin.on("keypress", async (_, key) => {
   if (!key || isPaused) return;

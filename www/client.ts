@@ -1,6 +1,7 @@
-import createInstance from "..";
+import { dominos } from "../node-types.json";
 import { decodeTbit } from "../tbit-decode";
 import type { Project } from "./types";
+import createInstance from "..";
 
 const dropZone = document.getElementById("drop-zone")!;
 const errorEl = document.getElementById("error")!;
@@ -115,7 +116,7 @@ async function fetchProjects() {
 
       container.appendChild(projectDiv);
 
-      const instance = createInstance();
+      const instance = createInstance(dominos as never);
 
       let hasScrolled = false;
       const nodeElements = new Map<string, HTMLDivElement>();

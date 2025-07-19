@@ -1,5 +1,3 @@
-import { dominos } from "./node-types.json";
-
 const directions = ["right", "up", "left", "down"] as const;
 
 type Direction = (typeof directions)[number];
@@ -9,7 +7,7 @@ type Action =
   | ["changeState", NodeState]
   | ["changeRotation", Rotation]
   | ["knock", Direction]
-  | ["unKnock", Direction]
+  | ["unknock", Direction]
   | "fall"
   | "stand";
 type BaseEventKey = "onKnocked" | "onClicked" | "onStart";
@@ -31,7 +29,7 @@ export interface Event {
 export interface NodeType {
   id: number;
   meta: {
-    characters: string[];
+    "tjs.characters": string[];
   };
   events: {
     [K in BaseEventKey]?: Event;
@@ -54,13 +52,14 @@ export const rotate = (d: Direction, r: number) => directions[(directions.indexO
 const invertedActions = {
   fall: "stand",
   stand: "fall",
-  knock: "unKnock",
-  unKnock: "knock",
+  knock: "unknock",
+  unknock: "knock",
   changeState: "changeState",
   changeRotation: "changeRotation",
 } as const;
 
-export default function createInstance() {
+export default function createInstance(dominos: NodeType[]) {
+  if (!dominos.every((d) => d.meta["tjs.characters"])) throw new Error("Invalid domino node");
   const nodes = new Map<`${number},${number}`, Node>();
 
   const actions = {
@@ -71,7 +70,7 @@ export default function createInstance() {
       if (!next || next.state !== "standing") return;
       queueEvent(next.id, next, `onKnocked:${rotate(direction, 4 - next.rotation)}`);
     },
-    unKnock(node: Node, direction: Direction) {
+    unknock(node: Node, direction: Direction) {
       const x = node.position.x + dirX(direction);
       const y = node.position.y + dirY(direction);
       const next = nodes.get(`${x},${y}`);
@@ -100,7 +99,8 @@ export default function createInstance() {
       node.state = state;
     },
     changeRotation(node: Node, rotation: Rotation) {
-      node.rotation = ((node.rotation + rotation) % node.type.meta.characters.length) as Rotation;
+      node.rotation = ((node.rotation + rotation) %
+        node.type.meta["tjs.characters"].length) as Rotation;
     },
   };
 
@@ -165,7 +165,7 @@ export default function createInstance() {
       }
       let [key, arg] = action;
       if (inverted) key = invertedActions[key];
-      if (["knock", "unKnock"].includes(key)) {
+      if (["knock", "unknock"].includes(key)) {
         arg = rotate(
           arg as never,
           event.relativeTo === "input"
@@ -182,13 +182,13 @@ export default function createInstance() {
   function addNode(data: string | { type: NodeType; rotation: Rotation }, x: number, y: number) {
     if (typeof data === "string") {
       const char = data;
-      const type = dominos.find((t) => t.meta.characters.includes(char));
+      const type = dominos.find((t) => t.meta["tjs.characters"].includes(char));
       if (!type) return;
-      data = { type, rotation: type.meta.characters.indexOf(char) } as unknown as {
+      data = { type, rotation: type.meta["tjs.characters"].indexOf(char) } as unknown as {
         type: NodeType;
         rotation: Rotation;
       };
-      data.rotation = data.type.meta.characters.indexOf(char) as Rotation;
+      data.rotation = data.type.meta["tjs.characters"].indexOf(char) as Rotation;
     }
     if (!data || typeof data === "string") return;
     const node = {
@@ -208,9 +208,13 @@ export default function createInstance() {
     load(data: [number, number, number, Rotation][]) {
       nodes.clear();
       for (const [objectId, x, y, rotation] of data) {
-        const type = dominos.find((t) => t.id === objectId) as NodeType;
+        const type = dominos.find((t) => t.id === objectId);
         if (!type) continue;
-        addNode({ type, rotation: (rotation % type.meta.characters.length) as Rotation }, x, y);
+        addNode(
+          { type, rotation: (rotation % type.meta["tjs.characters"].length) as Rotation },
+          x,
+          y
+        );
       }
     },
     actions,
