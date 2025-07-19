@@ -99,6 +99,8 @@ h1 {
   border-radius: calc(var(--radius) / 2);
   cursor: pointer;
   transition: opacity 0.2s ease;
+  text-decoration: none;
+  text-align: center;
 }
 
 .button:hover {

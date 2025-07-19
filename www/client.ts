@@ -38,15 +38,6 @@ dropZone.addEventListener("drop", async (e) => {
   }
 });
 
-function base64ToUint8Array(base64: string) {
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; ++i) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-  return bytes;
-}
-
 function downloadBlob(data: Uint8Array<ArrayBuffer>, name: string) {
   const blob = new Blob([data], { type: "application/octet-stream" });
   const url = URL.createObjectURL(blob);
@@ -67,9 +58,9 @@ async function fetchProjects() {
   try {
     const res = await fetch("/api/projects");
     if (!res.ok) throw new Error(`Failed to fetch: ${res.statusText}`);
-    const projects = await res.json();
+    const projects = (await res.json()) as Project[];
 
-    projects.forEach((project: Project) => {
+    for (const project of projects) {
       const projectDiv = document.createElement("div");
       projectDiv.className = "project";
 
@@ -77,7 +68,23 @@ async function fetchProjects() {
       title.textContent = project.name;
       projectDiv.appendChild(title);
 
-      const decoded = decodeTbit(project.data.data);
+      const gridContainer = document.createElement("div");
+      gridContainer.className = "grid-container";
+
+      const grid = document.createElement("div");
+      grid.className = "grid";
+
+      gridContainer.appendChild(grid);
+      projectDiv.appendChild(gridContainer);
+
+      const button = document.createElement("a");
+      button.className = "button";
+      button.textContent = "Download";
+      button.href = project.data.data;
+      button.download = `${project.name}.tbit`;
+      projectDiv.appendChild(button);
+
+      container.appendChild(projectDiv);
 
       const TILE_SIZE = 12;
       const REGION_SIZE = 100;
@@ -86,35 +93,6 @@ async function fetchProjects() {
         minY = Infinity,
         maxX = -Infinity,
         maxY = -Infinity;
-      for (const [, x, y] of decoded) {
-        if (x < minX) minX = x;
-        if (y < minY) minY = y;
-        if (x > maxX) maxX = x;
-        if (y > maxY) maxY = y;
-      }
-
-      const offsetX = -minX;
-      const offsetY = -minY;
-
-      const gridContainer = document.createElement("div");
-      gridContainer.className = "grid-container";
-
-      const grid = document.createElement("div");
-      grid.className = "grid";
-      grid.style.width = (maxX - minX + 1) * TILE_SIZE + "px";
-      grid.style.height = (maxY - minY + 1) * TILE_SIZE + "px";
-
-      gridContainer.appendChild(grid);
-      projectDiv.appendChild(gridContainer);
-
-      const button = document.createElement("button");
-      button.className = "button";
-      button.textContent = "Download";
-      button.onclick = () =>
-        downloadBlob(new TextEncoder().encode(project.data.data), `${project.name}.tbit`);
-      projectDiv.appendChild(button);
-
-      container.appendChild(projectDiv);
 
       const instance = createInstance(dominos as never);
 
@@ -123,6 +101,8 @@ async function fetchProjects() {
       let lastNodeStates = new Map<string, string>();
 
       function renderGrid() {
+        const offsetX = -minX;
+        const offsetY = -minY;
         const seen = new Set<string>();
         for (const node of instance.nodes.values()) {
           const {
@@ -207,31 +187,49 @@ async function fetchProjects() {
           });
         }
       }
-      function reload() {
-        instance.load(decoded);
-        for (const node of instance.nodes.values()) {
-          if (node.type.id === 3) {
-            instance.queueEvent(node.id, node, "onStart");
-          }
-        }
-      }
-      reload();
-      renderGrid();
-      let idleTicks = 0;
 
-      setInterval(() => {
-        renderGrid();
-        if (instance.queue.size === 0) {
-          ++idleTicks;
-          if (idleTicks >= 20) {
-            idleTicks = 0;
-            reload();
-          }
-        } else {
-          idleTicks = 0;
+      async function fetchProject() {
+        const res = await fetch(project.data.data);
+        if (!res.ok) throw new Error(`Failed to fetch tbit data: ${res.statusText}`);
+        const decoded = decodeTbit(await res.text());
+        for (const [, x, y] of decoded) {
+          if (x < minX) minX = x;
+          if (y < minY) minY = y;
+          if (x > maxX) maxX = x;
+          if (y > maxY) maxY = y;
         }
-      }, 50);
-    });
+
+        grid.style.width = (maxX - minX + 1) * TILE_SIZE + "px";
+        grid.style.height = (maxY - minY + 1) * TILE_SIZE + "px";
+
+        function reload() {
+          instance.load(decoded);
+          for (const node of instance.nodes.values()) {
+            if (node.type.id === 3) {
+              instance.queueEvent(node.id, node, "onStart");
+            }
+          }
+        }
+
+        reload();
+        renderGrid();
+        let idleTicks = 0;
+
+        setInterval(() => {
+          renderGrid();
+          if (instance.queue.size === 0) {
+            ++idleTicks;
+            if (idleTicks >= 20) {
+              idleTicks = 0;
+              reload();
+            }
+          } else {
+            idleTicks = 0;
+          }
+        }, 50);
+      }
+      fetchProject();
+    }
   } catch (err) {
     if (err instanceof Error) {
       errorEl.textContent = "Error loading projects: " + err.message;
