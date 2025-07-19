@@ -16,9 +16,9 @@ async function main() {
   app.get("/api/projects", async (_, res) => {
     const keys = await redis.keys("project:*");
     const projects = keys.length
-      ? (await redis.mGet(keys)).map((v) => JSON.parse((v ?? "") as string))
+      ? (await redis.mGet(keys)).map((v) => JSON.parse((v ?? "") as string) as Project)
       : [];
-    res.json(projects);
+    res.json(projects.sort((a, b) => b.createdAt - a.createdAt));
   });
 
   app.post("/api/projects", (req, res) => {

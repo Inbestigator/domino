@@ -62,9 +62,26 @@
     },
     {
       "id": 6,
-      "meta": { "name": "unknock", "characters": ["X"], "inComplete": true },
+      "meta": { "name": "half adder", "characters": ["A"], "inComplete": true },
       "events": {
-        "onKnocked": { "actions": [["unKnock", "right"], "fall"], "relativeTo": "input" }
+        "onKnocked:left": {
+          "actions": [
+            ["knock", "up"],
+            ["unKnock", "left"]
+          ]
+        },
+        "onKnocked:up": {
+          "actions": [
+            ["knock", "up"],
+            ["unKnock", "left"]
+          ]
+        },
+        "onKnocked:up,left": {
+          "actions": [
+            ["unKnock", "up"],
+            ["knock", "left"]
+          ]
+        }
       }
     }
   ]
