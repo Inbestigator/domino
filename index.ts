@@ -1,10 +1,13 @@
 const directions = ["right", "up", "left", "down"] as const;
 
 type Direction = (typeof directions)[number];
-type NodeState = "falling" | "fallen" | "standing";
+type NodeState = "standing" | "falling" | "fallen" | "unfalling";
 export type Rotation = 0 | 1 | 2 | 3;
 type Action =
-  | ["changeState" | "changeRotation" | "knock" | "unknock" | "fall" | "stand", (string | number)?];
+  | ["changeState", NodeState]
+  | ["changeRotation", Rotation]
+  | ["knock" | "unknock", Direction]
+  | ["fall" | "unfall"];
 type BaseEventKey = "onKnocked" | "onClicked" | "onStart";
 
 export interface Node {
@@ -45,8 +48,8 @@ export const dirY = (dir: Direction) => ({ right: 0, up: -1, left: 0, down: 1 }[
 export const rotate = (d: Direction, r: number) => directions[(directions.indexOf(d) + r) % 4]!;
 
 const invertedActions = {
-  fall: "stand",
-  stand: "fall",
+  fall: "unfall",
+  unfall: "fall",
   knock: "unknock",
   unknock: "knock",
   changeState: "changeState",
@@ -82,7 +85,7 @@ export default function createInstance(dominos: NodeType[]) {
         },
       });
     },
-    stand(node: Node) {
+    unfall(node: Node) {
       actions.changeState(node, "falling");
       queueEvent(crypto.randomUUID(), node, "" as never, {
         event: {
@@ -154,11 +157,10 @@ export default function createInstance(dominos: NodeType[]) {
     inverted?: boolean
   ) {
     for (const action of event.actions) {
-      let [key, arg] = action;
-      if (inverted) key = invertedActions[key];
-      if (["knock", "unknock"].includes(key)) {
-        arg = rotate(
-          arg as never,
+      if (inverted) action[0] = invertedActions[action[0]];
+      if (action[0] === "knock" || action[0] === "unknock") {
+        action[1] = rotate(
+          action[1],
           event.relativeTo === "input"
             ? directions.indexOf(inputDir)
             : event.relativeTo === "world"
@@ -166,7 +168,7 @@ export default function createInstance(dominos: NodeType[]) {
             : node.rotation
         );
       }
-      actions[key](node, arg as never);
+      actions[action[0]](node, action[1] as never);
     }
   }
 

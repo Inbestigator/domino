@@ -34,14 +34,48 @@
                   "actions": {
                     "type": "array",
                     "items": {
-                      "type": "array",
-                      "minItems": 1,
-                      "maxItems": 2,
-                      "items": [{ "type": "string" }, { "type": ["string", "number"] }]
+                      "oneOf": [
+                        {
+                          "type": "array",
+                          "prefixItems": [
+                            { "const": "changeState" },
+                            {
+                              "type": "string",
+                              "enum": ["standing", "falling", "fallen", "unfalling"]
+                            }
+                          ],
+                          "minItems": 2,
+                          "maxItems": 2
+                        },
+                        {
+                          "type": "array",
+                          "prefixItems": [
+                            { "const": "changeRotation" },
+                            { "type": "number", "enum": [0, 1, 2, 3] }
+                          ],
+                          "minItems": 2,
+                          "maxItems": 2
+                        },
+                        {
+                          "type": "array",
+                          "prefixItems": [
+                            { "type": "string", "enum": ["knock", "unknock"] },
+                            { "type": "string", "enum": ["right", "up", "left", "down"] }
+                          ],
+                          "minItems": 2,
+                          "maxItems": 2
+                        },
+                        {
+                          "type": "array",
+                          "prefixItems": [{ "type": "string", "enum": ["fall", "unfall"] }],
+                          "minItems": 1,
+                          "maxItems": 1
+                        }
+                      ]
                     }
                   },
                   "priority": { "type": "integer" },
-                  "relativeTo": { "type": "string" }
+                  "relativeTo": { "type": "string", "enum": ["self", "input", "world"] }
                 },
                 "additionalProperties": false
               }
