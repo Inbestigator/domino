@@ -33,6 +33,9 @@ function render() {
           case "standing":
             bg = "\x1b[44m";
             break;
+          case "unfalling":
+            bg = "\x1b[43m";
+            break;
           case "falling":
             bg = "\x1b[42m";
             break;

@@ -86,7 +86,7 @@ export default function createInstance(dominos: NodeType[]) {
       });
     },
     unfall(node: Node) {
-      actions.changeState(node, "falling");
+      actions.changeState(node, "unfalling");
       queueEvent(crypto.randomUUID(), node, "" as never, {
         event: {
           actions: [["changeState", "standing"]],
@@ -157,10 +157,11 @@ export default function createInstance(dominos: NodeType[]) {
     inverted?: boolean
   ) {
     for (const action of event.actions) {
-      if (inverted) action[0] = invertedActions[action[0]];
-      if (action[0] === "knock" || action[0] === "unknock") {
-        action[1] = rotate(
-          action[1],
+      let [key, arg] = action;
+      if (inverted) key = invertedActions[key];
+      if (key === "knock" || key === "unknock") {
+        arg = rotate(
+          arg as never,
           event.relativeTo === "input"
             ? directions.indexOf(inputDir)
             : event.relativeTo === "world"
@@ -168,7 +169,7 @@ export default function createInstance(dominos: NodeType[]) {
             : node.rotation
         );
       }
-      actions[action[0]](node, action[1] as never);
+      actions[key](node, arg as never);
     }
   }
 

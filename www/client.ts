@@ -145,7 +145,7 @@ async function fetchProjects() {
           img.alt = `Object ${objectId}`;
           img.style.transform = `rotate(${rotation * -90}deg)`;
           img.style.filter =
-            state === "fallen" ? "invert(1)" : state === "falling" ? "invert(0.5)" : "";
+            state === "fallen" ? "invert(1)" : state === "standing" ? "" : "invert(0.5)";
         }
 
         for (const [id, el] of nodeElements) {
