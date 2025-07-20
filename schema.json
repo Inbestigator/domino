@@ -37,7 +37,7 @@
                       "oneOf": [
                         {
                           "type": "array",
-                          "prefixItems": [
+                          "items": [
                             { "const": "changeState" },
                             {
                               "type": "string",
@@ -45,31 +45,31 @@
                             }
                           ],
                           "minItems": 2,
-                          "maxItems": 2
+                          "additionalItems": false
                         },
                         {
                           "type": "array",
-                          "prefixItems": [
+                          "items": [
                             { "const": "changeRotation" },
                             { "type": "number", "enum": [0, 1, 2, 3] }
                           ],
                           "minItems": 2,
-                          "maxItems": 2
+                          "additionalItems": false
                         },
                         {
                           "type": "array",
-                          "prefixItems": [
+                          "items": [
                             { "type": "string", "enum": ["knock", "unknock"] },
                             { "type": "string", "enum": ["right", "up", "left", "down"] }
                           ],
                           "minItems": 2,
-                          "maxItems": 2
+                          "additionalItems": false
                         },
                         {
                           "type": "array",
-                          "prefixItems": [{ "type": "string", "enum": ["fall", "unfall"] }],
+                          "items": [{ "type": "string", "enum": ["fall", "unfall"] }],
                           "minItems": 1,
-                          "maxItems": 1
+                          "additionalItems": false
                         }
                       ]
                     }
