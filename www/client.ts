@@ -1,7 +1,8 @@
 import { dominos } from "../node-types.json";
 import { decodeTbit } from "../tbit-decode";
-import type { Project } from "./types";
+import { Project } from "./types";
 import createInstance from "..";
+import { type } from "arktype";
 
 const dropZone = document.getElementById("drop-zone")!;
 const errorEl = document.getElementById("error")!;
@@ -38,18 +39,6 @@ dropZone.addEventListener("drop", async (e) => {
   }
 });
 
-function downloadBlob(data: Uint8Array<ArrayBuffer>, name: string) {
-  const blob = new Blob([data], { type: "application/octet-stream" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = name;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-}
-
 async function fetchProjects() {
   const container = document.getElementById("projects-container");
   if (!container) return;
@@ -58,7 +47,9 @@ async function fetchProjects() {
   try {
     const res = await fetch("/api/projects");
     if (!res.ok) throw new Error(`Failed to fetch: ${res.statusText}`);
-    const projects = (await res.json()) as Project[];
+    const projects = Project.array()(await res.json());
+
+    if (projects instanceof type.errors) return;
 
     for (const project of projects) {
       const projectDiv = document.createElement("div");
