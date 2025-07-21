@@ -149,8 +149,11 @@ process.stdin.on("keypress", async (_, key) => {
           : "up";
 
       if (!node) break;
-      instance.queueEvent(node.id, node, `onKnocked:${rotate(dir, 4 - node.rotation)}`);
-      instance.queueEvent(node.id, node, "onClicked");
+      instance.queueEvent(node.id, node, {
+        base: "onKnocked",
+        arg: rotate(dir, 4 - node.rotation),
+      });
+      instance.queueEvent(node.id, node, { base: "onClicked" });
       break;
     case "r":
       for (const n of instance.nodes.values()) {
@@ -186,7 +189,7 @@ process.stdin.on("keypress", async (_, key) => {
     case "space":
       for (const n of instance.nodes.values()) {
         if (n.type.id === 3) {
-          instance.queueEvent(n.id, n, "onStart");
+          instance.queueEvent(n.id, n, { base: "onStart" });
         }
       }
       break;

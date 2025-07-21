@@ -1,3 +1,5 @@
+import { argMask, parseNodeTypes, resolveEvent } from "./event-resolver";
+
 const directions = ["right", "up", "left", "down"] as const;
 
 type Direction = (typeof directions)[number];
@@ -8,7 +10,7 @@ type Action =
   | ["changeRotation", Rotation]
   | ["knock" | "unknock", Direction]
   | ["fall" | "unfall"];
-type BaseEventKey = "onKnocked" | "onClicked" | "onStart";
+export type BaseEventKey = "onKnocked" | "onClicked" | "onStart";
 
 export interface Node {
   id: string;
@@ -19,9 +21,11 @@ export interface Node {
 }
 
 export interface Event {
+  mask: number;
+  maskBits: number;
   actions: Action[];
-  priority?: number;
-  relativeTo?: "self" | "world" | "input";
+  priority: number;
+  relativeTo: "self" | "world" | "input";
 }
 
 export interface NodeType {
@@ -29,16 +33,16 @@ export interface NodeType {
   meta: {
     "tjs.characters": string[];
   };
-  events: {
-    [K in BaseEventKey]?: Event;
-  } & {
-    [key: `${BaseEventKey}:${string}`]: Event;
-  };
+  events: Record<BaseEventKey, Event[]>;
 }
+
+export type RawNodeType = Omit<NodeType, "events"> & {
+  events: Partial<Record<BaseEventKey | `${BaseEventKey}:${string}`, Partial<Omit<Event, "mask">>>>;
+};
 
 export interface QueueEntry {
   node: Node;
-  parts: Partial<Record<BaseEventKey, string[]>>;
+  events: Partial<Record<BaseEventKey, number>>;
   event?: Event;
   inverted?: boolean;
 }
@@ -56,8 +60,9 @@ const invertedActions = {
   changeRotation: "changeRotation",
 } as const;
 
-export default function createInstance(dominos: NodeType[]) {
-  if (!dominos.every((d) => d.meta["tjs.characters"])) throw new Error("Invalid domino node");
+export default function createInstance(rawNodeTypes: RawNodeType[]) {
+  const nodeTypes = parseNodeTypes(rawNodeTypes);
+  if (!nodeTypes.every((d) => d.meta["tjs.characters"])) throw new Error("Invalid node type");
   const nodes = new Map<`${number},${number}`, Node>();
 
   const actions = {
@@ -66,29 +71,41 @@ export default function createInstance(dominos: NodeType[]) {
       const y = node.position.y + dirY(direction);
       const next = nodes.get(`${x},${y}`);
       if (!next || next.state !== "standing") return;
-      queueEvent(next.id, next, `onKnocked:${rotate(direction, 4 - next.rotation)}`);
+      queueEvent(next.id, next, { base: "onKnocked", arg: rotate(direction, 4 - next.rotation) });
     },
     unknock(node: Node, direction: Direction) {
       const x = node.position.x + dirX(direction);
       const y = node.position.y + dirY(direction);
       const next = nodes.get(`${x},${y}`);
       if (!next || next.state !== "fallen") return;
-      queueEvent(next.id, next, `onKnocked:${rotate(direction, 4 - next.rotation)}`, {
+      queueEvent(next.id, next, {
+        base: "onKnocked",
+        arg: rotate(direction, 4 - next.rotation),
         inverted: true,
       });
     },
     fall(node: Node) {
       actions.changeState(node, "falling");
-      queueEvent(crypto.randomUUID(), node, "" as never, {
+      queueEvent(crypto.randomUUID(), node, {
+        base: "onKnocked",
         event: {
+          mask: 0,
+          maskBits: 0,
+          priority: 0,
+          relativeTo: "self",
           actions: [["changeState", "fallen"]],
         },
       });
     },
     unfall(node: Node) {
       actions.changeState(node, "unfalling");
-      queueEvent(crypto.randomUUID(), node, "" as never, {
+      queueEvent(crypto.randomUUID(), node, {
+        base: "onKnocked",
         event: {
+          mask: 0,
+          maskBits: 0,
+          priority: 0,
+          relativeTo: "self",
           actions: [["changeState", "standing"]],
         },
       });
@@ -107,66 +124,38 @@ export default function createInstance(dominos: NodeType[]) {
   function queueEvent(
     id: string,
     node: Node,
-    key: BaseEventKey | `${BaseEventKey}:${string}`,
-    data: { event?: Event; inverted?: boolean } = {}
+    data: { base: BaseEventKey; arg?: Direction; event?: Event; inverted?: boolean }
   ) {
-    const parts = queue.get(id)?.parts ?? {};
-    const [base, arg] = key.split(":") as [BaseEventKey, string];
-    if (!parts[base]) parts[base] = [];
-    parts[base]?.push(arg);
-    queue.set(id, { node, parts, ...data });
+    const events = queue.get(id)?.events ?? {};
+    if (data.arg) {
+      events[data.base] = argMask([data.arg]) | (events[data.base] ?? 0);
+    } else {
+      events[data.base] = events[data.base] ?? 0;
+    }
+    queue.set(id, { ...data, node, events });
   }
 
   setInterval(() => {
     const prev = new Map(queue);
     queue.clear();
-    prev.forEach(({ node, parts, event, inverted }) => {
+    prev.forEach(({ node, events, event, inverted }) => {
       if (event) {
-        return executeEvent(node, event, undefined, inverted);
+        return executeEvent(node, event, 0, inverted);
       }
-      const events = Object.entries(node.type.events).sort(
-        (a, b) => (a[1].priority ?? 0) - (b[1].priority ?? 0)
-      );
-      let best: { event: Event; dir?: Direction; priority: number; argLen: number } | undefined;
-      for (const [key, event] of events) {
-        const [base, ...args] = key.split(/[:,]/) as [BaseEventKey, ...string[]];
-        const part = parts[base];
-        if (!part) continue;
-        const priority = event.priority ?? 0;
-        const presentArgs = args.filter((arg) => part.includes(arg));
-
-        if (
-          !best ||
-          (presentArgs.length === args.length &&
-            (priority > best.priority ||
-              (priority === best.priority && presentArgs.length > best.argLen)))
-        ) {
-          best = { event, dir: part[0] as Direction, argLen: presentArgs.length, priority };
-        }
-      }
-      if (best) {
-        executeEvent(node, best.event, best.dir, inverted);
+      const resolved = resolveEvent(node.type.events, Object.entries(events));
+      if (resolved) {
+        executeEvent(node, resolved, resolved.dir, inverted);
       }
     });
   }, 50);
 
-  function executeEvent(
-    node: Node,
-    event: Event,
-    inputDir: Direction = "right",
-    inverted?: boolean
-  ) {
-    for (const action of event.actions) {
-      let [key, arg] = action;
+  function executeEvent(node: Node, event: Event, inputDir: number, inverted?: boolean) {
+    for (let [key, arg] of event.actions) {
       if (inverted) key = invertedActions[key];
       if (key === "knock" || key === "unknock") {
         arg = rotate(
           arg as never,
-          event.relativeTo === "input"
-            ? directions.indexOf(inputDir)
-            : event.relativeTo === "world"
-            ? 0
-            : node.rotation
+          event.relativeTo === "input" ? inputDir : event.relativeTo === "world" ? 0 : node.rotation
         );
       }
       actions[key](node, arg as never);
@@ -176,7 +165,7 @@ export default function createInstance(dominos: NodeType[]) {
   function addNode(data: string | { type: NodeType; rotation: Rotation }, x: number, y: number) {
     if (typeof data === "string") {
       const char = data;
-      const type = dominos.find((t) => t.meta["tjs.characters"].includes(char));
+      const type = nodeTypes.find((t) => t.meta["tjs.characters"].includes(char));
       if (!type) return;
       data = { type, rotation: type.meta["tjs.characters"].indexOf(char) } as unknown as {
         type: NodeType;
@@ -202,7 +191,7 @@ export default function createInstance(dominos: NodeType[]) {
     load(data: [number, number, number, Rotation][]) {
       nodes.clear();
       for (const [objectId, x, y, rotation] of data) {
-        const type = dominos.find((t) => t.id === objectId);
+        const type = nodeTypes.find((t) => t.id === objectId);
         if (!type) continue;
         addNode(
           { type, rotation: (rotation % type.meta["tjs.characters"].length) as Rotation },

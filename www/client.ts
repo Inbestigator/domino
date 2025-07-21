@@ -124,7 +124,8 @@ async function fetchProjects() {
           tile.style.left = `${(x + offsetX) * TILE_SIZE}px`;
           tile.style.top = `${(y + offsetY) * TILE_SIZE}px`;
           tile.style.cursor = objectId === 5 ? "pointer" : "default";
-          tile.onclick = objectId === 5 ? () => instance.queueEvent(id, node, "onClicked") : null;
+          tile.onclick =
+            objectId === 5 ? () => instance.queueEvent(id, node, { base: "onClicked" }) : null;
 
           let img = tile.querySelector("img") as HTMLImageElement | null;
           if (!img) {
@@ -197,7 +198,7 @@ async function fetchProjects() {
           instance.load(decoded);
           for (const node of instance.nodes.values()) {
             if (node.type.id === 3) {
-              instance.queueEvent(node.id, node, "onStart");
+              instance.queueEvent(node.id, node, { base: "onStart" });
             }
           }
         }
