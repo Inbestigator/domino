@@ -52,7 +52,7 @@ export const dirX = (dir: Direction) => ({ right: 1, up: 0, left: -1, down: 0 }[
 export const dirY = (dir: Direction) => ({ right: 0, up: -1, left: 0, down: 1 }[dir]);
 export const rotate = (d: Direction, r: number) => directions[(directions.indexOf(d) + r) % 4]!;
 
-const invertedActions = {
+const invertedActions: Record<Action[0], Action[0]> = {
   fall: "unfall",
   unfall: "fall",
   knock: "unknock",
@@ -60,7 +60,7 @@ const invertedActions = {
   click: "click",
   changeState: "changeState",
   changeRotation: "changeRotation",
-} as const;
+};
 
 export default function createInstance(rawNodeTypes: RawNodeType[]) {
   const nodeTypes = parseNodeTypes(rawNodeTypes);
@@ -162,7 +162,7 @@ export default function createInstance(rawNodeTypes: RawNodeType[]) {
   function executeEvent(node: Node, event: Event, inputDir: number, inverted?: boolean) {
     for (let [key, arg] of event.actions) {
       if (inverted) key = invertedActions[key];
-      if (key === "knock" || key === "unknock") {
+      if (arg === "right" || arg === "up" || arg === "left" || arg === "down") {
         arg = rotate(
           arg as never,
           event.relativeTo === "input" ? inputDir : event.relativeTo === "world" ? 0 : node.rotation

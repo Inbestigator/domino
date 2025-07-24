@@ -81,7 +81,7 @@
       "meta": { "name": "click", "tjs.characters": ["▹", "▵", "◃", "▿"] },
       "events": [
         {
-          "trigger": ["onKnocked"],
+          "trigger": ["onClicked"],
           "actions": [
             ["knock", "right"],
             ["click", "right"]
