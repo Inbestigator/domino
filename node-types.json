@@ -57,7 +57,12 @@
       "id": 5,
       "meta": { "name": "click", "tjs.characters": ["▹", "▵", "◃", "▿"] },
       "events": {
-        "onClicked": { "actions": [["knock", "right"]] }
+        "onClicked": {
+          "actions": [
+            ["knock", "right"],
+            ["click", "right"]
+          ]
+        }
       }
     },
     {

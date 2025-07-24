@@ -59,7 +59,7 @@
                         {
                           "type": "array",
                           "items": [
-                            { "type": "string", "enum": ["knock", "unknock"] },
+                            { "type": "string", "enum": ["knock", "unknock", "click"] },
                             { "type": "string", "enum": ["right", "up", "left", "down"] }
                           ],
                           "minItems": 2,

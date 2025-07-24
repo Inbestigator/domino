@@ -8,7 +8,7 @@ export type Rotation = 0 | 1 | 2 | 3;
 type Action =
   | ["changeState", NodeState]
   | ["changeRotation", Rotation]
-  | ["knock" | "unknock", Direction]
+  | ["knock" | "unknock" | "click", Direction]
   | ["fall" | "unfall"];
 export type BaseEventKey = "onKnocked" | "onClicked" | "onStart";
 
@@ -56,6 +56,7 @@ const invertedActions = {
   unfall: "fall",
   knock: "unknock",
   unknock: "knock",
+  click: "click",
   changeState: "changeState",
   changeRotation: "changeRotation",
 } as const;
@@ -82,6 +83,16 @@ export default function createInstance(rawNodeTypes: RawNodeType[]) {
         base: "onKnocked",
         arg: rotate(direction, 4 - next.rotation),
         inverted: true,
+      });
+    },
+    click(node: Node, direction: Direction) {
+      const x = node.position.x + dirX(direction);
+      const y = node.position.y + dirY(direction);
+      const next = nodes.get(`${x},${y}`);
+      if (!next) return;
+      queueEvent(next.id, next, {
+        base: "onClicked",
+        arg: rotate(direction, 4 - next.rotation),
       });
     },
     fall(node: Node) {

@@ -47,9 +47,9 @@ export function resolveEvent(events: NodeType["events"], types: [string, number]
   for (const [base, arg] of types) {
     for (const event of events[base as BaseEventKey]) {
       if (
-        (event.mask === 0 || arg === event.mask) &&
+        (event.mask & ~arg) === 0 &&
         (event.priority > best.priority ||
-          (event.priority === best.priority && event.maskBits > best.maskBits))
+          (event.priority === best.priority && (arg & ~event.mask) < (arg & ~best.mask)))
       ) {
         best = { ...event, dir: Math.log2(arg) };
       }
