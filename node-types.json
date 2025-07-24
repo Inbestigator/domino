@@ -5,89 +5,116 @@
     {
       "id": 0,
       "meta": { "name": "orthogonal", "tjs.characters": ["|", "-"] },
-      "events": {
-        "onKnocked:right": {
+      "events": [
+        {
+          "trigger": ["onKnocked", ["right"]],
           "actions": [["knock", "right"], ["changeRotation", 0], ["fall"]],
           "priority": 1
         },
-        "onKnocked:up": { "actions": [["knock", "up"], ["changeRotation", 1], ["fall"]] },
-        "onKnocked:left": {
+        {
+          "trigger": ["onKnocked", ["up"]],
+          "actions": [["knock", "up"], ["changeRotation", 1], ["fall"]]
+        },
+        {
+          "trigger": ["onKnocked", ["left"]],
           "actions": [["knock", "left"], ["changeRotation", 0], ["fall"]],
           "priority": 1
         },
-        "onKnocked:down": { "actions": [["knock", "down"], ["changeRotation", 1], ["fall"]] }
-      }
+        {
+          "trigger": ["onKnocked", ["down"]],
+          "actions": [["knock", "down"], ["changeRotation", 1], ["fall"]]
+        }
+      ]
     },
     {
       "id": 1,
       "meta": { "name": "diagonal", "tjs.characters": ["\\", "/"] },
-      "events": {
-        "onKnocked:right": { "actions": [["knock", "right"], ["knock", "up"], ["fall"]] },
-        "onKnocked:up": { "actions": [["knock", "right"], ["knock", "up"], ["fall"]] },
-        "onKnocked:left": { "actions": [["knock", "left"], ["knock", "down"], ["fall"]] },
-        "onKnocked:down": { "actions": [["knock", "left"], ["knock", "down"], ["fall"]] }
-      }
+      "events": [
+        {
+          "trigger": ["onKnocked", ["right"]],
+          "actions": [["knock", "right"], ["knock", "up"], ["fall"]]
+        },
+        {
+          "trigger": ["onKnocked", ["up"]],
+          "actions": [["knock", "right"], ["knock", "up"], ["fall"]]
+        },
+        {
+          "trigger": ["onKnocked", ["left"]],
+          "actions": [["knock", "left"], ["knock", "down"], ["fall"]]
+        },
+        {
+          "trigger": ["onKnocked", ["down"]],
+          "actions": [["knock", "left"], ["knock", "down"], ["fall"]]
+        }
+      ]
     },
     {
       "id": 2,
       "meta": { "name": "fork", "tjs.characters": ["<", "v", ">", "^"] },
-      "events": {
-        "onKnocked:right": {
+      "events": [
+        {
+          "trigger": ["onKnocked", ["right"]],
           "actions": [["knock", "right"], ["knock", "up"], ["knock", "down"], ["fall"]],
           "priority": 1
         },
-        "onKnocked": { "actions": [["knock", "left"], ["fall"]] }
-      }
+        { "trigger": ["onKnocked"], "actions": [["knock", "left"], ["fall"]] }
+      ]
     },
     {
       "id": 3,
       "meta": { "name": "trigger", "tjs.characters": ["▸", "▴", "◂", "▾"] },
-      "events": {
-        "onStart": { "actions": [["knock", "right"], ["fall"]] }
-      }
+      "events": [{ "trigger": ["onStart"], "actions": [["knock", "right"], ["fall"]] }]
     },
     {
       "id": 4,
       "meta": { "name": "crossover", "tjs.characters": ["+"] },
-      "events": {
-        "onKnocked": { "actions": [["knock", "right"]], "relativeTo": "input" }
-      }
+      "events": [
+        {
+          "trigger": ["onKnocked"],
+          "actions": [["knock", "right"]],
+          "relativeTo": "input"
+        }
+      ]
     },
     {
       "id": 5,
       "meta": { "name": "click", "tjs.characters": ["▹", "▵", "◃", "▿"] },
-      "events": {
-        "onClicked": {
+      "events": [
+        {
+          "trigger": ["onKnocked"],
           "actions": [
             ["knock", "right"],
             ["click", "right"]
           ]
         }
-      }
+      ]
     },
     {
       "id": 6,
       "meta": { "name": "half adder", "tjs.characters": ["A"], "incomplete": true },
-      "events": {
-        "onKnocked:left": {
+      "events": [
+        {
+          "trigger": ["onKnocked", ["up"]],
           "actions": [
             ["knock", "up"],
             ["unknock", "left"]
           ]
         },
-        "onKnocked:up": {
+        {
+          "trigger": ["onKnocked", ["left"]],
           "actions": [
             ["knock", "up"],
             ["unknock", "left"]
           ]
         },
-        "onKnocked:up,left": {
+        {
+          "trigger": ["onKnocked", ["up", "left"]],
           "actions": [
             ["unknock", "up"],
             ["knock", "left"]
           ]
         }
-      }
+      ]
     }
   ]
 }

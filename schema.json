@@ -25,60 +25,70 @@
             "additionalProperties": true
           },
           "events": {
-            "type": "object",
-            "patternProperties": {
-              "^on(Knocked(:[a-z]+(,[a-z]+)*)?|Clicked|Start)$": {
-                "type": "object",
-                "required": ["actions"],
-                "properties": {
-                  "actions": {
-                    "type": "array",
-                    "items": {
-                      "oneOf": [
-                        {
-                          "type": "array",
-                          "items": [
-                            { "const": "changeState" },
-                            {
-                              "type": "string",
-                              "enum": ["standing", "falling", "fallen", "unfalling"]
-                            }
-                          ],
-                          "minItems": 2,
-                          "additionalItems": false
-                        },
-                        {
-                          "type": "array",
-                          "items": [
-                            { "const": "changeRotation" },
-                            { "type": "number", "enum": [0, 1, 2, 3] }
-                          ],
-                          "minItems": 2,
-                          "additionalItems": false
-                        },
-                        {
-                          "type": "array",
-                          "items": [
-                            { "type": "string", "enum": ["knock", "unknock", "click"] },
-                            { "type": "string", "enum": ["right", "up", "left", "down"] }
-                          ],
-                          "minItems": 2,
-                          "additionalItems": false
-                        },
-                        {
-                          "type": "array",
-                          "items": [{ "type": "string", "enum": ["fall", "unfall"] }],
-                          "minItems": 1,
-                          "additionalItems": false
-                        }
-                      ]
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["actions"],
+              "properties": {
+                "trigger": {
+                  "type": "array",
+                  "items": [
+                    { "type": "string", "enum": ["onKnocked", "onClicked", "onStart"] },
+                    {
+                      "type": "array",
+                      "items": { "type": "string", "enum": ["right", "up", "left", "down"] }
                     }
-                  },
-                  "priority": { "type": "integer" },
-                  "relativeTo": { "type": "string", "enum": ["self", "input", "world"] }
+                  ],
+                  "minItems": 1,
+                  "additionalItems": false
                 },
-                "additionalProperties": false
-              }
+                "actions": {
+                  "type": "array",
+                  "items": {
+                    "oneOf": [
+                      {
+                        "type": "array",
+                        "items": [
+                          { "const": "changeState" },
+                          {
+                            "type": "string",
+                            "enum": ["standing", "falling", "fallen", "unfalling"]
+                          }
+                        ],
+                        "minItems": 2,
+                        "additionalItems": false
+                      },
+                      {
+                        "type": "array",
+                        "items": [
+                          { "const": "changeRotation" },
+                          { "type": "number", "enum": [0, 1, 2, 3] }
+                        ],
+                        "minItems": 2,
+                        "additionalItems": false
+                      },
+                      {
+                        "type": "array",
+                        "items": [
+                          { "type": "string", "enum": ["knock", "unknock", "click"] },
+                          { "type": "string", "enum": ["right", "up", "left", "down"] }
+                        ],
+                        "minItems": 2,
+                        "additionalItems": false
+                      },
+                      {
+                        "type": "array",
+                        "items": [{ "type": "string", "enum": ["fall", "unfall"] }],
+                        "minItems": 1,
+                        "additionalItems": false
+                      }
+                    ]
+                  }
+                },
+                "priority": { "type": "integer" },
+                "relativeTo": { "type": "string", "enum": ["self", "input", "world"] }
+              },
+              "additionalProperties": false
             },
             "additionalProperties": false
           }

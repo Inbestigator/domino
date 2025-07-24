@@ -22,7 +22,6 @@ export interface Node {
 
 export interface Event {
   mask: number;
-  maskBits: number;
   actions: Action[];
   priority: number;
   relativeTo: "self" | "world" | "input";
@@ -36,9 +35,11 @@ export interface NodeType {
   events: Record<BaseEventKey, Event[]>;
 }
 
-export type RawNodeType = Omit<NodeType, "events"> & {
-  events: Partial<Record<BaseEventKey | `${BaseEventKey}:${string}`, Partial<Omit<Event, "mask">>>>;
-};
+export interface RawNodeType extends Omit<NodeType, "events"> {
+  events: (Partial<Omit<Event, "mask">> & {
+    trigger: [BaseEventKey, Parameters<typeof argMask>[0]?];
+  })[];
+}
 
 export interface QueueEntry {
   node: Node;
@@ -101,7 +102,6 @@ export default function createInstance(rawNodeTypes: RawNodeType[]) {
         base: "onKnocked",
         event: {
           mask: 0,
-          maskBits: 0,
           priority: 0,
           relativeTo: "self",
           actions: [["changeState", "fallen"]],
@@ -114,7 +114,6 @@ export default function createInstance(rawNodeTypes: RawNodeType[]) {
         base: "onKnocked",
         event: {
           mask: 0,
-          maskBits: 0,
           priority: 0,
           relativeTo: "self",
           actions: [["changeState", "standing"]],

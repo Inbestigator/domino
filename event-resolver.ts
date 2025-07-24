@@ -19,15 +19,12 @@ export function parseNodeTypes(nodes: RawNodeType[]) {
       onKnocked: [],
       onStart: [],
     };
-    for (const key in node.events) {
-      const [base, ...args] = key.split(/[:,]/) as [BaseEventKey, ...(keyof typeof ARG_MASK)[]];
-      const event = node.events[key as BaseEventKey];
-      parsedEvents[base].push({
+    for (const event of node.events) {
+      parsedEvents[event.trigger[0]].push({
         actions: event?.actions ?? [],
         priority: event?.priority ?? 0,
         relativeTo: event?.relativeTo ?? "self",
-        mask: argMask(args),
-        maskBits: args.length,
+        mask: argMask(event.trigger[1] ?? []),
       });
     }
     out.push({ ...node, events: parsedEvents });
@@ -38,7 +35,6 @@ export function parseNodeTypes(nodes: RawNodeType[]) {
 export function resolveEvent(events: NodeType["events"], types: [string, number][]) {
   let best: Event & { dir: number } = {
     priority: -Infinity,
-    maskBits: -Infinity,
     mask: -1,
     actions: [],
     relativeTo: "self",
