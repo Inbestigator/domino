@@ -24,7 +24,6 @@ export interface Event {
   mask: number;
   actions: Action[];
   priority: number;
-  relativeTo: "self" | "world" | "input";
 }
 
 export interface NodeType {
@@ -100,24 +99,14 @@ export default function createInstance(rawNodeTypes: RawNodeType[]) {
       actions.changeState(node, "falling");
       queueEvent(crypto.randomUUID(), node, {
         base: "onKnocked",
-        event: {
-          mask: 0,
-          priority: 0,
-          relativeTo: "self",
-          actions: [["changeState", "fallen"]],
-        },
+        event: { mask: 0, priority: 0, actions: [["changeState", "fallen"]] },
       });
     },
     unfall(node: Node) {
       actions.changeState(node, "unfalling");
       queueEvent(crypto.randomUUID(), node, {
         base: "onKnocked",
-        event: {
-          mask: 0,
-          priority: 0,
-          relativeTo: "self",
-          actions: [["changeState", "standing"]],
-        },
+        event: { mask: 0, priority: 0, actions: [["changeState", "standing"]] },
       });
     },
     changeState(node: Node, state: NodeState) {
@@ -163,10 +152,7 @@ export default function createInstance(rawNodeTypes: RawNodeType[]) {
     for (let [key, arg] of event.actions) {
       if (inverted) key = invertedActions[key];
       if (arg === "right" || arg === "up" || arg === "left" || arg === "down") {
-        arg = rotate(
-          arg as never,
-          event.relativeTo === "input" ? inputDir : event.relativeTo === "world" ? 0 : node.rotation
-        );
+        arg = rotate(arg as never, node.rotation);
       }
       actions[key](node, arg as never);
     }

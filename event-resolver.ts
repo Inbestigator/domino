@@ -23,7 +23,6 @@ export function parseNodeTypes(nodes: RawNodeType[]) {
       parsedEvents[event.trigger[0]].push({
         actions: event?.actions ?? [],
         priority: event?.priority ?? 0,
-        relativeTo: event?.relativeTo ?? "self",
         mask: argMask(event.trigger[1] ?? []),
       });
     }
@@ -37,7 +36,6 @@ export function resolveEvent(events: NodeType["events"], types: [string, number]
     priority: -Infinity,
     mask: -1,
     actions: [],
-    relativeTo: "self",
     dir: 0,
   };
   for (const [base, arg] of types) {

@@ -70,9 +70,20 @@
       "meta": { "name": "crossover", "tjs.characters": ["+"] },
       "events": [
         {
-          "trigger": ["onKnocked"],
-          "actions": [["knock", "right"]],
-          "relativeTo": "input"
+          "trigger": ["onKnocked", ["right"]],
+          "actions": [["knock", "right"]]
+        },
+        {
+          "trigger": ["onKnocked", ["up"]],
+          "actions": [["knock", "up"]]
+        },
+        {
+          "trigger": ["onKnocked", ["left"]],
+          "actions": [["knock", "left"]]
+        },
+        {
+          "trigger": ["onKnocked", ["down"]],
+          "actions": [["knock", "down"]]
         }
       ]
     },
