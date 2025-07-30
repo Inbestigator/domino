@@ -1,5 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "rewrites": [{ "source": "/api/(.*)", "destination": "/api" }],
-  "buildCommand": "bun bundle"
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api" },
+    { "source": "/bot", "destination": "/api/bot" }
+  ],
+  "buildCommand": "bun bot:generate && bun bundle"
 }
