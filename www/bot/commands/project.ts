@@ -5,12 +5,26 @@ import {
   type CommandInteraction,
 } from "dressed";
 import { decodeTbit } from "../../../tbit-decode";
-import { createCanvas, loadImage } from "canvas";
-import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { Project } from "../../types";
 import { type } from "arktype";
+import sharp from "sharp";
+import path from "node:path";
+
+const TILE_COUNT = 7;
+const TILE_SIZE = 64;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+const rotatedTiles: Record<number, Buffer[]> = {};
+
+for (let i = 0; i < TILE_COUNT; i++) {
+  const file = path.join(__dirname, "..", "..", "public", `${i}.png`);
+  rotatedTiles[i] = await Promise.all(
+    [0, 90, 180, 270].map((angle) =>
+      sharp(file).rotate(angle).resize(TILE_SIZE, TILE_SIZE).toBuffer()
+    )
+  );
+}
 
 export const config: CommandConfig = {
   description: "Interface with projects on tbit.vercel.app",
@@ -82,35 +96,47 @@ export default async function projectCommand(interaction: CommandInteraction) {
       const width = (maxX - minX + 1) * tileSize;
       const height = (maxY - minY + 1) * tileSize;
 
-      const canvas = createCanvas(width, height);
-      const ctx = canvas.getContext("2d");
-
-      const tiles = await Promise.all(
-        Array(7)
-          .fill(0)
-          .map((_, i) => loadImage(path.join(__dirname, "..", "..", "public", `${i}.png`)))
-      );
+      const compositeInputs = new Array<{ input: Buffer; top: number; left: number }>();
 
       for (const [objectId, x, y, rotation] of decoded) {
-        try {
-          ctx.save();
-          const drawX = (x - minX) * tileSize;
-          const drawY = (y - minY) * tileSize;
-
-          ctx.translate(drawX + tileSize / 2, drawY + tileSize / 2);
-          ctx.rotate(((rotation % 4) * Math.PI) / 2);
-          ctx.drawImage(tiles[objectId]!, -tileSize / 2, -tileSize / 2, tileSize, tileSize);
-          ctx.restore();
-        } catch (err) {
-          console.error(`Failed to load ${objectId}.png:`, err);
-        }
+        const px = (x - minX) * TILE_SIZE;
+        const py = (y - minY) * TILE_SIZE;
+        compositeInputs.push({
+          input: rotatedTiles[objectId]?.[rotation]!,
+          top: py,
+          left: px,
+        });
       }
 
-      // Get image buffer
-      const image = canvas.toBuffer("image/png");
+      const CHUNK_SIZE = 500;
+
+      function composeInChunks(
+        baseImage: sharp.Sharp,
+        composites: { input: Buffer; top: number; left: number }[]
+      ) {
+        let composed = baseImage;
+        for (let i = 0; i < composites.length; i += CHUNK_SIZE) {
+          const chunk = composites.slice(i, i + CHUNK_SIZE);
+          composed = composed.composite(chunk);
+        }
+        return composed;
+      }
+
+      const base = sharp({
+        create: {
+          width,
+          height,
+          channels: 4,
+          background: { r: 0, g: 0, b: 0, alpha: 0 },
+        },
+      });
+
+      const finalImage = composeInChunks(base, compositeInputs);
+      const buffer = await finalImage.png().toBuffer();
+
       interaction.editReply({
-        attachments: [{ id: 0, filename: "decoded.png" }],
-        files: [{ data: image, name: "decoded.png" }],
+        attachments: [{ id: 0 }],
+        files: [{ data: buffer, name: "decoded.png" }],
       });
       break;
     }

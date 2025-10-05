@@ -11,7 +11,7 @@ async function main() {
   const app = express();
   const port = 3000;
 
-  app.use(express.json());
+  app.use(express.json({ limit: "5mb" }));
   app.use(Fingerprint());
   app.use((req, res, next) => {
     if (!req.fingerprint) return res.status(401).send("Missing fingerprint");
@@ -85,9 +85,7 @@ async function main() {
     res.json(project);
   });
 
-  app.listen(port, () => {
-    console.log(`Express app listening at http://localhost:${port}`);
-  });
+  app.listen(port, () => console.log(`Express app listening at http://localhost:${port}`));
 }
 
 main();

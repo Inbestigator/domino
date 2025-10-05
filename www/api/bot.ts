@@ -1,5 +1,5 @@
-import createHandler from "@dressed/next";
+import { handleRequest } from "dressed/server";
 // @ts-ignore
-import { commands, components, events, config } from "../.dressed/index.mjs";
+import { commands, components, events, config } from "../.dressed";
 
-export const POST = createHandler(commands, components, events, config);
+export const POST = (req: Request) => handleRequest(req, commands, components, events, config);

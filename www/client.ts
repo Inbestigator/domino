@@ -194,9 +194,13 @@ async function fetchProjects() {
         grid.style.width = (maxX - minX + 1) * TILE_SIZE + "px";
         grid.style.height = (maxY - minY + 1) * TILE_SIZE + "px";
 
-        function reload() {
-          instance.load(decoded);
+        function reload(partial?: boolean) {
+          instance.queue.clear();
+          if (!partial) {
+            instance.load(decoded);
+          }
           for (const node of instance.nodes.values()) {
+            if (partial) node.state = "standing";
             if (node.type.id === 3) {
               instance.queueEvent(node.id, node, { base: "onStart" });
             }
@@ -206,17 +210,29 @@ async function fetchProjects() {
         reload();
         renderGrid();
         let idleTicks = 0;
+        let ticksSinceIdle = 0;
+        let running = true;
 
         setInterval(() => {
-          renderGrid();
+          if (!running) {
+            if (instance.queue.size === 0) return;
+            else running = true;
+          }
+          if (idleTicks === 0) renderGrid();
           if (instance.queue.size === 0) {
             ++idleTicks;
             if (idleTicks >= 20) {
+              reload(true);
+              renderGrid();
+              if (ticksSinceIdle === 0) {
+                running = false;
+              }
               idleTicks = 0;
-              reload();
+              ticksSinceIdle = 0;
             }
           } else {
             idleTicks = 0;
+            ++ticksSinceIdle;
           }
         }, 50);
       }
