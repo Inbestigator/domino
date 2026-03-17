@@ -7,10 +7,10 @@ const dropZone = document.getElementById("drop-zone")!;
 const errorEl = document.getElementById("error")!;
 const container = document.getElementById("project")!;
 
-const TILE_SIZE = 12;
-const REGION_SIZE = 100;
+const TILE_SIZE = 16;
+const VIEWPORT_TILE_MARGIN = 2;
 
-let interval: NodeJS.Timeout | null = null;
+let interval: NodeJS.Timeout;
 
 dropZone.addEventListener("dragover", (e) => {
   e.preventDefault();
@@ -40,7 +40,7 @@ dropZone.addEventListener("drop", async (e) => {
 
 function loadProject(name: string, raw: string) {
   container.replaceChildren();
-  if (interval) clearInterval(interval);
+  clearInterval(interval);
 
   const decoded = decodeTbit(raw);
 
@@ -65,7 +65,6 @@ function loadProject(name: string, raw: string) {
 
   const grid = document.createElement("div");
   grid.className = "grid";
-
   grid.style.width = `${(maxX - minX + 1) * TILE_SIZE}px`;
   grid.style.height = `${(maxY - minY + 1) * TILE_SIZE}px`;
 
@@ -76,48 +75,67 @@ function loadProject(name: string, raw: string) {
 
   const nodeElements = new Map<string, HTMLDivElement>();
   const lastNodeStates = new Map<string, string>();
-  let hasScrolled = false;
 
-  function renderGrid() {
+  let viewportX = 0;
+  let viewportY = 0;
+
+  function getVisibleBounds() {
+    const width = gridContainer.clientWidth;
+    const height = gridContainer.clientHeight;
+
+    const startCol = Math.floor(viewportX / TILE_SIZE) - VIEWPORT_TILE_MARGIN;
+    const endCol = Math.ceil((viewportX + width) / TILE_SIZE) + VIEWPORT_TILE_MARGIN;
+    const startRow = Math.floor(viewportY / TILE_SIZE) - VIEWPORT_TILE_MARGIN;
+    const endRow = Math.ceil((viewportY + height) / TILE_SIZE) + VIEWPORT_TILE_MARGIN;
+
     const offsetX = -minX;
     const offsetY = -minY;
+
+    return { startCol, endCol, startRow, endRow, offsetX, offsetY };
+  }
+
+  function renderGrid() {
+    const { startCol, endCol, startRow, endRow, offsetX, offsetY } = getVisibleBounds();
     const seen = new Set<string>();
 
     for (const node of instance.nodes.values()) {
-      const { id, type, position, state, rotation } = node;
-      const key = `${position.x},${position.y},${state},${rotation},${type.id}`;
+      const x = node.position.x + offsetX;
+      const y = node.position.y + offsetY;
 
-      if (lastNodeStates.get(id) === key) {
-        seen.add(id);
+      if (x < startCol || x > endCol || y < startRow || y > endRow) continue;
+
+      const key = `${node.position.x},${node.position.y},${node.state},${node.rotation},${node.type.id}`;
+
+      if (lastNodeStates.get(node.id) === key) {
+        seen.add(node.id);
         continue;
       }
 
-      lastNodeStates.set(id, key);
-      seen.add(id);
+      lastNodeStates.set(node.id, key);
+      seen.add(node.id);
 
-      let tile = nodeElements.get(id);
+      let tile = nodeElements.get(node.id);
       if (!tile) {
         tile = document.createElement("div");
         tile.className = "tile";
-        nodeElements.set(id, tile);
+        nodeElements.set(node.id, tile);
         grid.appendChild(tile);
       }
 
-      tile.style.left = `${(position.x + offsetX) * TILE_SIZE}px`;
-      tile.style.top = `${(position.y + offsetY) * TILE_SIZE}px`;
-      tile.style.cursor = type.id === 5 ? "pointer" : "default";
-      tile.onclick = type.id === 5 ? () => instance.queueEvent(id, node, { base: "onClicked" }) : null;
+      tile.style.left = `${x * TILE_SIZE}px`;
+      tile.style.top = `${y * TILE_SIZE}px`;
+      tile.style.cursor = node.type.id === 5 ? "pointer" : "default";
+      tile.onclick = node.type.id === 5 ? () => instance.queueEvent(node.id, node, { base: "onClicked" }) : null;
 
       let img = tile.querySelector("img");
       if (!img) {
         img = document.createElement("img");
         tile.appendChild(img);
       }
-
-      img.src = `/${type.id}.png`;
-      img.alt = `Object ${type.id}`;
-      img.style.transform = `rotate(${rotation * -90}deg)`;
-      img.style.filter = state === "fallen" ? "invert(1)" : state === "standing" ? "" : "invert(0.5)";
+      img.src = `/${node.type.id}.png`;
+      img.alt = `Object ${node.type.id}`;
+      img.style.transform = `rotate(${node.rotation * -90}deg)`;
+      img.style.filter = node.state === "fallen" ? "invert(1)" : node.state === "standing" ? "" : "invert(0.5)";
     }
 
     for (const [id, el] of nodeElements) {
@@ -128,38 +146,7 @@ function loadProject(name: string, raw: string) {
       }
     }
 
-    if (!hasScrolled) {
-      hasScrolled = true;
-      const densityMap = new Map<string, number>();
-      for (const node of instance.nodes.values()) {
-        const px = (node.position.x + offsetX) * TILE_SIZE;
-        const py = (node.position.y + offsetY) * TILE_SIZE;
-        const col = Math.floor(px / REGION_SIZE);
-        const row = Math.floor(py / REGION_SIZE);
-        const key = `${col},${row}`;
-        densityMap.set(key, (densityMap.get(key) || 0) + 1);
-      }
-
-      let maxCount = -1,
-        targetCol = 0,
-        targetRow = 0;
-      for (const [key, count] of densityMap.entries()) {
-        if (count > maxCount) {
-          maxCount = count;
-          [targetCol, targetRow] = key.split(",").map(Number) as [number, number];
-        }
-      }
-
-      requestAnimationFrame(() => {
-        const scrollX = targetCol * REGION_SIZE + REGION_SIZE / 2 - gridContainer.clientWidth / 2;
-        const scrollY = targetRow * REGION_SIZE + REGION_SIZE / 2 - gridContainer.clientHeight / 2;
-        gridContainer.scrollTo({
-          left: scrollX,
-          top: scrollY,
-          behavior: "smooth",
-        });
-      });
-    }
+    grid.style.transform = `translate(${-viewportX}px, ${-viewportY}px)`;
   }
 
   function reload(partial?: boolean) {
@@ -192,4 +179,19 @@ function loadProject(name: string, raw: string) {
 
     renderGrid();
   }, 50);
+
+  gridContainer.addEventListener(
+    "wheel",
+    (e) => {
+      e.preventDefault();
+      viewportX += e.deltaX;
+      viewportY += e.deltaY;
+
+      viewportX = Math.max(0, Math.min(viewportX, (maxX - minX + 1) * TILE_SIZE - gridContainer.clientWidth));
+      viewportY = Math.max(0, Math.min(viewportY, (maxY - minY + 1) * TILE_SIZE - gridContainer.clientHeight));
+
+      renderGrid();
+    },
+    { passive: false },
+  );
 }
