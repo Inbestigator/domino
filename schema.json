@@ -4,25 +4,21 @@
   "type": "object",
   "required": ["version", "dominos"],
   "properties": {
-    "version": {
-      "type": "integer"
-    },
+    "version": { "type": "integer" },
     "dominos": {
       "type": "array",
       "items": {
         "type": "object",
         "required": ["id", "meta", "events"],
         "properties": {
-          "id": {
-            "type": "integer"
-          },
+          "id": { "type": "integer", "description": "Identifier used in .tbit files" },
           "meta": {
             "type": "object",
             "required": ["name"],
             "properties": {
-              "name": { "type": "string" }
+              "name": { "type": "string", "description": "A unique human identifier" }
             },
-            "additionalProperties": true
+            "description": "Special data properties that may be implementation-specific"
           },
           "events": {
             "type": "array",
@@ -35,13 +31,28 @@
                   "items": [
                     {
                       "type": "string",
-                      "enum": ["onKnocked", "onClicked", "onStart"]
+                      "title": "Event",
+                      "oneOf": [
+                        {
+                          "const": "onKnocked",
+                          "description": "Triggered when the node is knocked"
+                        },
+                        {
+                          "const": "onClicked",
+                          "description": "Triggered when the user clicks on the node"
+                        },
+                        {
+                          "const": "onStart",
+                          "description": "Triggered when the simulation starts"
+                        }
+                      ]
                     },
                     {
                       "type": "array",
                       "items": {
                         "type": "string",
-                        "enum": ["right", "up", "left", "down"]
+                        "enum": ["right", "up", "left", "down"],
+                        "description": "Only trigger for specific direction combinations if the event is directional"
                       }
                     }
                   ],
@@ -51,14 +62,19 @@
                 "actions": {
                   "type": "array",
                   "items": {
+                    "examples": [["changeState", "standing"], ["changeRotation", 0], ["knock", "right"], ["fall"]],
                     "oneOf": [
                       {
                         "type": "array",
                         "items": [
-                          { "const": "changeState" },
+                          {
+                            "const": "changeState",
+                            "description": "Change the node state"
+                          },
                           {
                             "type": "string",
-                            "enum": ["standing", "falling", "fallen", "unfalling"]
+                            "enum": ["standing", "falling", "fallen", "unfalling"],
+                            "title": "State"
                           }
                         ],
                         "minItems": 2,
@@ -66,7 +82,22 @@
                       },
                       {
                         "type": "array",
-                        "items": [{ "const": "changeRotation" }, { "type": "number", "enum": [0, 1, 2, 3] }],
+                        "items": [
+                          {
+                            "const": "changeRotation",
+                            "description": "Rotate the node"
+                          },
+                          {
+                            "type": "number",
+                            "oneOf": [
+                              { "const": 0, "title": "right" },
+                              { "const": 1, "title": "down" },
+                              { "const": 2, "title": "left" },
+                              { "const": 3, "title": "up" }
+                            ],
+                            "title": "Direction"
+                          }
+                        ],
                         "minItems": 2,
                         "additionalItems": false
                       },
@@ -75,11 +106,13 @@
                         "items": [
                           {
                             "type": "string",
-                            "enum": ["knock", "unknock", "click"]
+                            "enum": ["knock", "unknock", "click"],
+                            "description": "Trigger an event on a neighbouring node"
                           },
                           {
                             "type": "string",
-                            "enum": ["right", "up", "left", "down"]
+                            "enum": ["right", "up", "left", "down"],
+                            "title": "Direction"
                           }
                         ],
                         "minItems": 2,
@@ -87,17 +120,39 @@
                       },
                       {
                         "type": "array",
-                        "items": [{ "type": "string", "enum": ["fall", "unfall"] }],
+                        "items": [
+                          {
+                            "type": "string",
+                            "enum": ["fall", "unfall"],
+                            "description": "Set the node state and trigger relevant events"
+                          }
+                        ],
                         "minItems": 1,
                         "additionalItems": false
                       }
                     ]
                   }
                 },
-                "priority": { "type": "integer" },
+                "priority": {
+                  "type": "integer",
+                  "description": "Higher priority events will be executed first in the tick"
+                },
                 "relativeTo": {
                   "type": "string",
-                  "enum": ["self", "input", "world"]
+                  "oneOf": [
+                    {
+                      "const": "self",
+                      "description": "Directions are relative to the rotation of the node"
+                    },
+                    {
+                      "const": "input",
+                      "description": "Directions are relative to the rotation from the direction of the neighbour to trigger the event"
+                    },
+                    {
+                      "const": "world",
+                      "description": "Directions are relative to the default rotation"
+                    }
+                  ]
                 }
               },
               "additionalProperties": false
