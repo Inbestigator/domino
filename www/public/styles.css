@@ -38,30 +38,21 @@ h1 {
   background: var(--card-bg);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 1rem;
-  overflow: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-#project h2 {
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin: 0;
+  overflow: hidden;
 }
 
 .grid-container {
   position: relative;
   height: 32rem;
   width: 100%;
-  overflow: hidden;
+  overflow: auto;
   background: #fefefe;
-  touch-action: none;
+  padding: 1rem;
 }
 
 .grid {
   position: relative;
+  max-width: none;
 }
 
 .tile {
@@ -128,10 +119,6 @@ h1 {
 @media (max-width: 640px) {
   body {
     padding: 1rem;
-  }
-  #drop-zone,
-  #project {
-    display: none;
   }
   #mobile-error {
     display: block;

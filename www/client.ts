@@ -8,7 +8,7 @@ const errorEl = document.getElementById("error")!;
 const container = document.getElementById("project")!;
 
 const TILE_SIZE = 16;
-const VIEWPORT_TILE_MARGIN = 2;
+const REGION_SIZE = 64;
 
 let interval: NodeJS.Timeout;
 
@@ -30,7 +30,7 @@ dropZone.addEventListener("drop", async (e) => {
 
   try {
     const text = await file.text();
-    loadProject(file.name, text);
+    loadProject(text);
   } catch (err) {
     if (err instanceof Error) {
       errorEl.textContent = `Load error: ${err.message}`;
@@ -38,7 +38,7 @@ dropZone.addEventListener("drop", async (e) => {
   }
 });
 
-function loadProject(name: string, raw: string) {
+function loadProject(raw: string) {
   container.replaceChildren();
   clearInterval(interval);
 
@@ -56,10 +56,6 @@ function loadProject(name: string, raw: string) {
     if (y > maxY) maxY = y;
   }
 
-  const title = document.createElement("h2");
-  title.textContent = name;
-  container.appendChild(title);
-
   const gridContainer = document.createElement("div");
   gridContainer.className = "grid-container";
 
@@ -75,67 +71,70 @@ function loadProject(name: string, raw: string) {
 
   const nodeElements = new Map<string, HTMLDivElement>();
   const lastNodeStates = new Map<string, string>();
-
-  let viewportX = 0;
-  let viewportY = 0;
-
-  function getVisibleBounds() {
-    const width = gridContainer.clientWidth;
-    const height = gridContainer.clientHeight;
-
-    const startCol = Math.floor(viewportX / TILE_SIZE) - VIEWPORT_TILE_MARGIN;
-    const endCol = Math.ceil((viewportX + width) / TILE_SIZE) + VIEWPORT_TILE_MARGIN;
-    const startRow = Math.floor(viewportY / TILE_SIZE) - VIEWPORT_TILE_MARGIN;
-    const endRow = Math.ceil((viewportY + height) / TILE_SIZE) + VIEWPORT_TILE_MARGIN;
-
-    const offsetX = -minX;
-    const offsetY = -minY;
-
-    return { startCol, endCol, startRow, endRow, offsetX, offsetY };
-  }
+  let hasScrolled = false;
 
   function renderGrid() {
-    const { startCol, endCol, startRow, endRow, offsetX, offsetY } = getVisibleBounds();
+    const offsetX = -minX;
+    const offsetY = -minY;
     const seen = new Set<string>();
 
+    const viewportLeft = gridContainer.scrollLeft;
+    const viewportTop = gridContainer.scrollTop;
+    const viewportRight = viewportLeft + gridContainer.clientWidth;
+    const viewportBottom = viewportTop + gridContainer.clientHeight;
+
     for (const node of instance.nodes.values()) {
-      const x = node.position.x + offsetX;
-      const y = node.position.y + offsetY;
+      const { id, type, position, state, rotation } = node;
+      const key = `${position.x},${position.y},${state},${rotation},${type.id}`;
 
-      if (x < startCol || x > endCol || y < startRow || y > endRow) continue;
+      const px = (position.x + offsetX) * TILE_SIZE;
+      const py = (position.y + offsetY) * TILE_SIZE;
+      const tileRight = px + TILE_SIZE;
+      const tileBottom = py + TILE_SIZE;
 
-      const key = `${node.position.x},${node.position.y},${node.state},${node.rotation},${node.type.id}`;
+      const isVisible =
+        tileRight >= viewportLeft && px <= viewportRight && tileBottom >= viewportTop && py <= viewportBottom;
 
-      if (lastNodeStates.get(node.id) === key) {
-        seen.add(node.id);
+      if (!isVisible) {
+        if (nodeElements.has(id)) {
+          nodeElements.get(id)!.remove();
+          nodeElements.delete(id);
+          lastNodeStates.delete(id);
+        }
         continue;
       }
 
-      lastNodeStates.set(node.id, key);
-      seen.add(node.id);
+      if (lastNodeStates.get(id) === key) {
+        seen.add(id);
+        continue;
+      }
 
-      let tile = nodeElements.get(node.id);
+      lastNodeStates.set(id, key);
+      seen.add(id);
+
+      let tile = nodeElements.get(id);
       if (!tile) {
         tile = document.createElement("div");
         tile.className = "tile";
-        nodeElements.set(node.id, tile);
+        nodeElements.set(id, tile);
         grid.appendChild(tile);
       }
 
-      tile.style.left = `${x * TILE_SIZE}px`;
-      tile.style.top = `${y * TILE_SIZE}px`;
-      tile.style.cursor = node.type.id === 5 ? "pointer" : "default";
-      tile.onclick = node.type.id === 5 ? () => instance.queueEvent(node.id, node, { base: "onClicked" }) : null;
+      tile.style.left = `${px}px`;
+      tile.style.top = `${py}px`;
+      tile.style.cursor = type.id === 5 ? "pointer" : "default";
+      tile.onclick = type.id === 5 ? () => instance.queueEvent(id, node, { base: "onClicked" }) : null;
 
       let img = tile.querySelector("img");
       if (!img) {
         img = document.createElement("img");
         tile.appendChild(img);
       }
-      img.src = `/${node.type.id}.png`;
-      img.alt = `Object ${node.type.id}`;
-      img.style.transform = `rotate(${node.rotation * -90}deg)`;
-      img.style.filter = node.state === "fallen" ? "invert(1)" : node.state === "standing" ? "" : "invert(0.5)";
+
+      img.src = `/${type.id}.png`;
+      img.alt = `Object ${type.id}`;
+      img.style.transform = `rotate(${rotation * -90}deg)`;
+      img.style.filter = state === "fallen" ? "invert(1)" : state === "standing" ? "" : "invert(0.5)";
     }
 
     for (const [id, el] of nodeElements) {
@@ -146,7 +145,34 @@ function loadProject(name: string, raw: string) {
       }
     }
 
-    grid.style.transform = `translate(${-viewportX}px, ${-viewportY}px)`;
+    if (!hasScrolled) {
+      hasScrolled = true;
+      const densityMap = new Map<string, number>();
+      for (const node of instance.nodes.values()) {
+        const px = (node.position.x + offsetX) * TILE_SIZE;
+        const py = (node.position.y + offsetY) * TILE_SIZE;
+        const col = Math.floor(px / REGION_SIZE);
+        const row = Math.floor(py / REGION_SIZE);
+        const key = `${col},${row}`;
+        densityMap.set(key, (densityMap.get(key) || 0) + 1);
+      }
+
+      let maxCount = -1,
+        targetCol = 0,
+        targetRow = 0;
+      for (const [key, count] of densityMap.entries()) {
+        if (count > maxCount) {
+          maxCount = count;
+          [targetCol, targetRow] = key.split(",").map(Number) as [number, number];
+        }
+      }
+
+      requestAnimationFrame(() => {
+        const scrollX = targetCol * REGION_SIZE + REGION_SIZE / 2 - gridContainer.clientWidth / 2;
+        const scrollY = targetRow * REGION_SIZE + REGION_SIZE / 2 - gridContainer.clientHeight / 2;
+        gridContainer.scrollTo({ left: scrollX, top: scrollY, behavior: "smooth" });
+      });
+    }
   }
 
   function reload(partial?: boolean) {
@@ -180,18 +206,5 @@ function loadProject(name: string, raw: string) {
     renderGrid();
   }, 50);
 
-  gridContainer.addEventListener(
-    "wheel",
-    (e) => {
-      e.preventDefault();
-      viewportX += e.deltaX;
-      viewportY += e.deltaY;
-
-      viewportX = Math.max(0, Math.min(viewportX, (maxX - minX + 1) * TILE_SIZE - gridContainer.clientWidth));
-      viewportY = Math.max(0, Math.min(viewportY, (maxY - minY + 1) * TILE_SIZE - gridContainer.clientHeight));
-
-      renderGrid();
-    },
-    { passive: false },
-  );
+  gridContainer.addEventListener("scroll", renderGrid);
 }
