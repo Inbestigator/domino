@@ -1,22 +1,10 @@
 {
   "name": "www",
-  "type": "module",
   "scripts": {
-    "bundle": "tsup-node server.ts -d api --minify --format esm && bun esbuild client.ts > public/client.js --bundle --minify",
-    "bot:generate": "dressed build",
-    "bot:register": "bun bot:generate -r && bun .dressed"
+    "bundle": "bun esbuild client.ts > public/client.js --bundle --minify"
   },
   "dependencies": {
-    "@types/express": "^5.0.3",
-    "arktype": "^2.1.22",
-    "dressed": "^1.10.0-canary.9",
-    "esbuild": "^0.25.10",
-    "express": "^5.1.0",
-    "express-fingerprint": "^1.2.2",
-    "redis": "^5.8.3",
-    "sharp": "^0.34.4"
+    "esbuild": "^0.25.10"
   },
-  "devDependencies": {
-    "tsup": "^8.5.0"
-  }
+  "type": "module"
 }

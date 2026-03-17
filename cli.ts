@@ -1,9 +1,11 @@
-import { dominos } from "./node-types.json";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { isAbsolute, relative } from "node:path";
+import { cwd } from "node:process";
 import { emitKeypressEvents } from "node:readline";
-import { decodeTbit } from "./tbit-decode";
-import createInstance, { rotate, type Rotation } from ".";
 import { stdout } from "bun";
+import createInstance, { type Rotation, rotate } from ".";
+import { dominos } from "./node-types.json";
+import { decodeTbit } from "./tbit-decode";
 
 export const ROWS = process.stdout.rows;
 export const COLS = process.stdout.columns;
@@ -12,7 +14,12 @@ emitKeypressEvents(process.stdin);
 process.stdin.setRawMode(true);
 process.stdout.write("\x1b[?25l");
 
-export const cursor = { row: Math.ceil(ROWS / 2), col: Math.ceil(COLS / 2), modulus: 1, dir: "h" };
+export const cursor = {
+  row: Math.ceil(ROWS / 2),
+  col: Math.ceil(COLS / 2),
+  modulus: 1,
+  dir: "h",
+};
 let saveFile: string | undefined;
 let isPaused = false;
 
@@ -137,16 +144,9 @@ process.stdin.on("keypress", async (_, key) => {
       cursor.row = cursor.row + (key.shift ? 3 : 1);
       cursor.dir = "v";
       break;
-    case "return":
+    case "return": {
       const node = instance.nodes.get(`${cursor.col},${cursor.row}`);
-      const dir =
-        cursor.dir === "h"
-          ? cursor.modulus === 1
-            ? "right"
-            : "left"
-          : cursor.modulus === 1
-          ? "down"
-          : "up";
+      const dir = cursor.dir === "h" ? (cursor.modulus === 1 ? "right" : "left") : cursor.modulus === 1 ? "down" : "up";
 
       if (!node) break;
       instance.queueEvent(node.id, node, {
@@ -155,12 +155,13 @@ process.stdin.on("keypress", async (_, key) => {
       });
       instance.queueEvent(node.id, node, { base: "onClicked" });
       break;
+    }
     case "r":
       for (const n of instance.nodes.values()) {
         n.state = "standing";
       }
       break;
-    case "s":
+    case "s": {
       if (!saveFile) break;
       const data: [number, number, number, Rotation][] = [];
       for (const [_, node] of instance.nodes) {
@@ -168,6 +169,7 @@ process.stdin.on("keypress", async (_, key) => {
       }
       writeFileSync(saveFile, data.join(","));
       break;
+    }
     case "l":
       if (!saveFile || !existsSync(saveFile)) break;
       try {
@@ -176,12 +178,17 @@ process.stdin.on("keypress", async (_, key) => {
         instance.load(decodedData);
       } catch {}
       break;
-    case "o":
+    case "o": {
       isPaused = true;
       const v = await input("", saveFile);
-      if (v) saveFile = v;
+
+      if (v) {
+        saveFile = (isAbsolute(v) ? relative(cwd(), v) : v).replace(/\\ /g, " ");
+      }
+
       isPaused = false;
       break;
+    }
     case "backspace":
       cursor.col = cursor.col - 1;
       instance.nodes.delete(`${cursor.col},${cursor.row}`);

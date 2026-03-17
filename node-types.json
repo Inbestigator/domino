@@ -93,37 +93,29 @@
       "events": [
         {
           "trigger": ["onClicked"],
-          "actions": [
-            ["knock", "right"],
-            ["click", "right"]
-          ]
+          "actions": [["knock", "right"], ["click", "right"]]
         }
       ]
     },
     {
       "id": 6,
-      "meta": { "name": "half adder", "tjs.characters": ["A"], "incomplete": true },
+      "meta": {
+        "name": "half adder",
+        "tjs.characters": ["A"],
+        "incomplete": true
+      },
       "events": [
         {
           "trigger": ["onKnocked", ["up"]],
-          "actions": [
-            ["knock", "up"],
-            ["unknock", "left"]
-          ]
+          "actions": [["knock", "up"], ["unknock", "left"]]
         },
         {
           "trigger": ["onKnocked", ["left"]],
-          "actions": [
-            ["knock", "up"],
-            ["unknock", "left"]
-          ]
+          "actions": [["knock", "up"], ["unknock", "left"]]
         },
         {
           "trigger": ["onKnocked", ["up", "left"]],
-          "actions": [
-            ["unknock", "up"],
-            ["knock", "left"]
-          ]
+          "actions": [["unknock", "up"], ["knock", "left"]]
         }
       ]
     }

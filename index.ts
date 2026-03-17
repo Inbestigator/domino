@@ -47,9 +47,10 @@ export interface QueueEntry {
   inverted?: boolean;
 }
 
-export const dirX = (dir: Direction) => ({ right: 1, up: 0, left: -1, down: 0 }[dir]);
-export const dirY = (dir: Direction) => ({ right: 0, up: -1, left: 0, down: 1 }[dir]);
-export const rotate = (d: Direction, r: number) => directions[(directions.indexOf(d) + r) % 4]!;
+export const dirX = (dir: Direction) => ({ right: 1, up: 0, left: -1, down: 0 })[dir];
+export const dirY = (dir: Direction) => ({ right: 0, up: -1, left: 0, down: 1 })[dir];
+export const rotate = (d: Direction, r: number) =>
+  directions[(directions.indexOf(d) + r) % 4] as (typeof directions)[number];
 
 const invertedActions: Record<Action[0], Action[0]> = {
   fall: "unfall",
@@ -71,14 +72,17 @@ export default function createInstance(rawNodeTypes: RawNodeType[]) {
       const x = node.position.x + dirX(direction);
       const y = node.position.y + dirY(direction);
       const next = nodes.get(`${x},${y}`);
-      if (!next || next.state !== "standing") return;
-      queueEvent(next.id, next, { base: "onKnocked", arg: rotate(direction, 4 - next.rotation) });
+      if (next?.state !== "standing") return;
+      queueEvent(next.id, next, {
+        base: "onKnocked",
+        arg: rotate(direction, 4 - next.rotation),
+      });
     },
     unknock(node: Node, direction: Direction) {
       const x = node.position.x + dirX(direction);
       const y = node.position.y + dirY(direction);
       const next = nodes.get(`${x},${y}`);
-      if (!next || next.state !== "fallen") return;
+      if (next?.state !== "fallen") return;
       queueEvent(next.id, next, {
         base: "onKnocked",
         arg: rotate(direction, 4 - next.rotation),
@@ -113,8 +117,7 @@ export default function createInstance(rawNodeTypes: RawNodeType[]) {
       node.state = state;
     },
     changeRotation(node: Node, rotation: Rotation) {
-      node.rotation = ((node.rotation + rotation) %
-        node.type.meta["tjs.characters"].length) as Rotation;
+      node.rotation = ((node.rotation + rotation) % node.type.meta["tjs.characters"].length) as Rotation;
     },
   };
 
@@ -123,7 +126,12 @@ export default function createInstance(rawNodeTypes: RawNodeType[]) {
   function queueEvent(
     id: string,
     node: Node,
-    data: { base: BaseEventKey; arg?: Direction; event?: Event; inverted?: boolean }
+    data: {
+      base: BaseEventKey;
+      arg?: Direction;
+      event?: Event;
+      inverted?: boolean;
+    },
   ) {
     const events = queue.get(id)?.events ?? {};
     if (data.arg) {
@@ -139,7 +147,8 @@ export default function createInstance(rawNodeTypes: RawNodeType[]) {
     queue.clear();
     prev.forEach(({ node, events, event, inverted }) => {
       if (event) {
-        return executeEvent(node, event, 0, inverted);
+        executeEvent(node, event, 0, inverted);
+        return;
       }
       const resolved = resolveEvent(node.type.events, Object.entries(events));
       if (resolved) {
@@ -148,7 +157,7 @@ export default function createInstance(rawNodeTypes: RawNodeType[]) {
     });
   }, 50);
 
-  function executeEvent(node: Node, event: Event, inputDir: number, inverted?: boolean) {
+  function executeEvent(node: Node, event: Event, _inputDir: number, inverted?: boolean) {
     for (let [key, arg] of event.actions) {
       if (inverted) key = invertedActions[key];
       if (arg === "right" || arg === "up" || arg === "left" || arg === "down") {
@@ -163,7 +172,10 @@ export default function createInstance(rawNodeTypes: RawNodeType[]) {
       const char = data;
       const type = nodeTypes.find((t) => t.meta["tjs.characters"].includes(char));
       if (!type) return;
-      data = { type, rotation: type.meta["tjs.characters"].indexOf(char) } as unknown as {
+      data = {
+        type,
+        rotation: type.meta["tjs.characters"].indexOf(char),
+      } as unknown as {
         type: NodeType;
         rotation: Rotation;
       };
@@ -190,9 +202,12 @@ export default function createInstance(rawNodeTypes: RawNodeType[]) {
         const type = nodeTypes.find((t) => t.id === objectId);
         if (!type) continue;
         addNode(
-          { type, rotation: (rotation % type.meta["tjs.characters"].length) as Rotation },
+          {
+            type,
+            rotation: (rotation % type.meta["tjs.characters"].length) as Rotation,
+          },
           x,
-          y
+          y,
         );
       }
     },

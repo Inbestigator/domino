@@ -1,4 +1,4 @@
-import type { NodeType, RawNodeType, Event, BaseEventKey } from ".";
+import type { BaseEventKey, Event, NodeType, RawNodeType } from ".";
 
 const ARG_MASK = {
   right: 1 << 0,
