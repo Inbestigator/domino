@@ -2,10 +2,12 @@
 import createInstance from "..";
 import { dominos } from "../node-types.json";
 import { decodeTbit } from "../tbit-decode";
+import tileImages from "./tile-images.json";
 
-const dropZone = document.getElementById("drop-zone")!;
-const errorEl = document.getElementById("error")!;
-const container = document.getElementById("project")!;
+const dropZone = document.getElementById("drop-zone") as HTMLDivElement;
+const errorEl = document.getElementById("error") as HTMLParagraphElement;
+const container = document.getElementById("project") as HTMLDivElement;
+const fileInput = document.getElementById("file-input") as HTMLInputElement;
 
 const TILE_SIZE = 16;
 const REGION_SIZE = 64;
@@ -14,16 +16,16 @@ let interval: NodeJS.Timeout;
 
 dropZone.addEventListener("dragover", (e) => {
   e.preventDefault();
-  dropZone.style.background = "#e0e0e0";
+  dropZone.style.color = "var(--primary)";
 });
 
 dropZone.addEventListener("dragleave", () => {
-  dropZone.style.background = "";
+  dropZone.style.color = "";
 });
 
 dropZone.addEventListener("drop", async (e) => {
   e.preventDefault();
-  dropZone.style.background = "";
+  dropZone.style.color = "";
 
   const file = e.dataTransfer?.files[0];
   if (!file) return;
@@ -36,6 +38,26 @@ dropZone.addEventListener("drop", async (e) => {
       errorEl.textContent = `Load error: ${err.message}`;
     }
   }
+});
+
+dropZone.addEventListener("click", () => {
+  fileInput.click();
+});
+
+fileInput.addEventListener("change", async () => {
+  const file = fileInput.files?.[0];
+  if (!file) return;
+
+  try {
+    const text = await file.text();
+    loadProject(text);
+  } catch (err) {
+    if (err instanceof Error) {
+      errorEl.textContent = `Load error: ${err.message}`;
+    }
+  }
+
+  fileInput.value = "";
 });
 
 function loadProject(raw: string) {
@@ -131,7 +153,7 @@ function loadProject(raw: string) {
         tile.appendChild(img);
       }
 
-      img.src = `/${type.id}.png`;
+      img.src = tileImages[type.id] as string;
       img.alt = `Object ${type.id}`;
       img.style.transform = `rotate(${rotation * -90}deg)`;
       img.style.filter = state === "fallen" ? "invert(1)" : state === "standing" ? "" : "invert(0.5)";
@@ -204,7 +226,7 @@ function loadProject(raw: string) {
     }
 
     renderGrid();
-  }, 50);
+  }, 0);
 
   gridContainer.addEventListener("scroll", renderGrid);
 }

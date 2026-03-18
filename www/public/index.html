@@ -8,14 +8,15 @@
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <h1>Tbit Viewer</h1>
-    <div id="drop-zone">
-      <strong>Drop a file here to view a project</strong>
+    <div id="drop-zone" class="card">
+      <input type="file" id="file-input" accept=".tbit" style="display: none" />
+      <strong>
+        <span class="mobile-only">Click to open</span>
+        <span class="not-mobile">Drop a <code>.tbit</code> file here to view</span> a
+        project</strong
+      >
     </div>
-    <div id="project"></div>
-    <div id="error" class="error"></div>
-    <div id="mobile-error" class="error">
-      This application is not compatible with mobile devices.
-    </div>
+    <div id="project" class="card need-child"></div>
+    <strong id="error" class="card need-child"></strong>
   </body>
 </html>
